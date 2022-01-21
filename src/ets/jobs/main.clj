@@ -2,10 +2,9 @@
   (:require
     [clojure.java.io :as io]
     [ets.jobs.core :as jobs]
-    [ets.jobs.decrypt :as decrypt]
     [ets.jobs.map :as map]
-    [ets.jobs.sii-file :as sf]
-    [ets.jobs.util :as util])
+    [ets.jobs.web :as web]
+    [ring.adapter.jetty :as jetty])
   (:gen-class))
 
 (defn print-ach [[k jobs]]
@@ -23,18 +22,27 @@
   (first (filter #(= profile-name (:name %))
                  (jobs/profiles (io/file dir)))))
 
-(defn find-jobs [profile]
-  (->> (:dir profile)
-       (io/file)
-       util/latest-save
-       (#(do (prn %) %)) ; Dumps the filename.
-       decrypt/decode
-       sf/parse-sii
-       jobs/achievable-jobs))
+(def port
+  "This is TS (Truck Sim) in ASCII."
+  8483)
 
-(defn -main [dir profile-name & _]
+(defn cli-output [dir profile-name & _]
   (->> (selected-profile dir profile-name)
-       find-jobs
+       :dir
+       jobs/parse-latest
+       jobs/achievable-jobs
        (map print-ach)
        doall))
+
+(defn start []
+  (jetty/run-jetty web/handler
+                   {:port  port
+                    :join? false}))
+
+(defn -main [& _]
+  (jetty/run-jetty web/handler {:port port}))
+
+(comment
+  (start)
+  )
 

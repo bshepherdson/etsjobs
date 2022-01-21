@@ -1,1 +1,15 @@
-{:paths ["src"]}
+{:paths ["src"]
+ :deps {org.clojure/clojure     {:mvn/version "1.10.3"}
+        ring/ring-core          {:mvn/version "1.9.5"}
+        ring/ring-jetty-adapter {:mvn/version "1.9.5"}
+        hiccup/hiccup           {:mvn/version "1.0.5"}}
+
+ :aliases
+ {:dev
+  {:extra-paths ["dev"]
+   :extra-deps {nrepl/nrepl                {:mvn/version "0.8.3"}
+                cider/cider-nrepl          {:mvn/version "0.26.0"}
+                ring/ring-devel            {:mvn/version "1.6.3"}}
+   :main-opts ["-m" "nrepl.cmdline"
+               "--middleware" "[cider.nrepl/cider-middleware]"
+               "-i"]}}}

@@ -1,5 +1,6 @@
 (ns ets.jobs.core
   (:require
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [ets.jobs.decrypt :as decrypt]
     [ets.jobs.sii-file :as sf]
@@ -29,6 +30,37 @@
 (defn current-time [s]
   (get (economy s) "game_time"))
 
+(def day-length  (* 60 24))
+(def week-length (* day-length 7))
+
+(def days ["Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"])
+
+(defn- time-breakdown [epoch-mins]
+  (let [in-week (mod epoch-mins week-length)
+        in-day  (mod epoch-mins day-length)]
+    {:week (inc (quot epoch-mins week-length))
+     :day  (nth days (quot in-week day-length))
+     :hour (quot in-day 60)
+     :mins (mod epoch-mins 60)}))
+
+(defn time-zone-names [raw]
+  (let [[_ tz] (re-matches #"@@tz_(\w+)@@" raw)]
+    (.toUpperCase tz)))
+
+(defn local-time
+  "Returns a more subjective time in the user's current local time zone.
+  0 is week 1, Monday, 00:00Z.
+  Returns {:zulu {:week 12 :day 'Wednesday' :hour 0 :min 12}
+           :local {...}
+           :tz    'CEST'}."
+  [s]
+  (let [now      (current-time s) ; Zulu minutes from game epoch.
+        eco      (economy s)
+        tz-delta (get eco "time_zone")]
+    {:zulu  (time-breakdown now)
+     :local (time-breakdown (+ now tz-delta))
+     :tz    (time-zone-names (get eco "time_zone_name"))}))
+
 (comment
   (let [now        (current-time p)
         companies  (get (economy p) "companies")
@@ -38,10 +70,11 @@
         ]
     jobs
     )
-  
+
   (let [])
   (economy p)
   (all-jobs p)
+  (local-time p)
   )
 
 (defn all-jobs [s]
@@ -59,7 +92,7 @@
          :recipient       target-company
          :destination     target-city
          :cargo           (get-in o ["cargo" 1])
-         :expiration-time (get o "expiration_time")
+         :expires-in-mins (- (get o "expiration_time") now)
          :distance        (get o "shortest_distance_km")
          :urgency         (get o "urgency")}))))
 
@@ -205,13 +238,15 @@
 
 (defn whatever-floats-your-boat
   "Deliver to all container ports in Scandinavia (cont_port)."
-  [{:keys [recipient]}]
-  (= "cont_port" recipient))
+  [{:keys [destination recipient]}]
+  (and (= "cont_port" recipient)
+       (scandinavia-cities destination)))
 
 (defn miner
   "Deliver to all quarries in Scandinavia (nord_sten, ms_stein)."
-  [{:keys [recipient]}]
-  (#{"nord_sten" "ms_stein"} recipient))
+  [{:keys [destination recipient]}]
+  (and (#{"nord_sten" "ms_stein"} recipient)
+       (scandinavia-cities destination)))
 
 ; France
 (def french-reactors
@@ -408,6 +443,14 @@
   (for [p (.listFiles dir)]
     (profile-info p)))
 
+(defn parse-latest [profile]
+  (->> profile
+       (io/file)
+       util/latest-save
+       (#(do (prn %) %)) ; Dumps the filename.
+       decrypt/decode
+       sf/parse-sii))
+
 (comment
 
   (def prof (->> "samples/426973686F70/profile.sii"
@@ -427,6 +470,8 @@
   (take 4 (:data p))
 
   (:structures p)
+  (select-keys (economy p) ["game_time" "time_zone" "time_zone_name"])
+
   (get-in p [:structures 14])
   (sii-struct p "job_offer")
   (by-id p (-> (by-type p 19)
