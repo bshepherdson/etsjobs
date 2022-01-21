@@ -1,0 +1,7 @@
+.clj-kondo/
+.cpcache/
+.lsp/
+.nrepl-port
+samples/
+uber.jar
+ets_achievements.jar
