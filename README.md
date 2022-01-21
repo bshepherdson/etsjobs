@@ -18,7 +18,9 @@ Then to actually use this tool:
 
 - Get a JAR from the Releases page.
 - Have Java 13 or later installed.
-- Run the JAR with `java -jar ets_achievements.jar` (from anywhere).
+- Run the JAR (in any folder) by either:
+  - Double-clicking it, or
+  - The command `java -jar ets_achievements.jar`
 - Visit [`http://localhost:8483`](http://localhost:8483) in a browser.
   - From another device like a phone, you can use your computer's internal IP
     address, generally `192.168.*.*`.
