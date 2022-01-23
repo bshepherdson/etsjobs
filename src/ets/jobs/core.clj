@@ -5,7 +5,8 @@
     [ets.jobs.decrypt :as decrypt]
     [ets.jobs.sii-file :as sf]
     [ets.jobs.sii-file-text :as sft]
-    [ets.jobs.util :as util])
+    [ets.jobs.util :as util]
+    [ets.jobs.map :as map])
   (:import
     [java.io File]))
 
@@ -97,16 +98,18 @@
          :urgency         (get o "urgency")}))))
 
 
-(defn concrete-jungle [{:keys [sender]}]
-  (= "radus" sender))
+(defn concrete-jungle [{:keys [sender origin]}]
+  (let [{:keys [c]} (map/cities origin)]
+    (and (#{"EST" "FI" "LT" "LV" "RU"} c)
+         (= "radus" sender))))
 
 (defn industry-standard
   "2 deliveries to every paper mill, loco factory, and furniture factory in
   the Baltic states.
   Those are LVR, Renat, Viljo Paperitehdas Oy, Estonian Paper AS, and VPF
   (lvr, renat, viljo_paper, ee_paper, viln_paper)."
-  [{:keys [receiver]}]
-  (#{"lvr" "renat" "viljo_paper" "ee_paper" "viln_paper"} receiver))
+  [{:keys [recipient]}]
+  (#{"lvr" "renat" "viljo_paper" "ee_paper" "viln_paper"} recipient))
 
 (def russian-main-cities
   #{"luga" "pskov" "petersburg" "sosnovy_bor" "vyborg"})
@@ -492,7 +495,7 @@
     (get-in p [:data id]))
 
   (def cargos (into #{} (map :cargo (all-jobs p))))
-  (count (all-jobs p))
+  (identity cargos)
 
   (def companies (clojure.set/union (into #{} (map :sender    (all-jobs p)))
                                     (into #{} (map :recipient (all-jobs p)))))
