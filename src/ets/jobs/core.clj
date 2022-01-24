@@ -51,14 +51,16 @@
 (defn local-time
   "Returns a more subjective time in the user's current local time zone.
   0 is week 1, Monday, 00:00Z.
-  Returns {:zulu {:week 12 :day 'Wednesday' :hour 0 :min 12}
+  Returns {:cest {:week 12 :day 'Wednesday' :hour 0 :min 12}
            :local {...}
-           :tz    'CEST'}."
+           :tz    'CEST'}.
+  Note that the base time is, I think, CEST (Germany time) and not UTC!
+  But the time zone is given relative to UTC, but CEST is UTC+2."
   [s]
-  (let [now      (current-time s) ; Zulu minutes from game epoch.
+  (let [now      (current-time s) ; CEST minutes from game epoch.
         eco      (economy s)
-        tz-delta (get eco "time_zone")]
-    {:zulu  (time-breakdown now)
+        tz-delta (- (get eco "time_zone") 120)]
+    {:cest  (time-breakdown now)
      :local (time-breakdown (+ now tz-delta))
      :tz    (time-zone-names (get eco "time_zone_name"))}))
 

@@ -220,12 +220,12 @@
   (format "Week %2d, %s %02d:%02d" week day hour mins))
 
 (defn sanity-check [s]
-  (let [{:keys [zulu local tz]} (jobs/local-time s)]
+  (let [{:keys [cest local tz]} (jobs/local-time s)]
     [:section
      [:h2 "Sanity Check"]
      [:p "Check you have up-to-date jobs by confirming the in-game time."]
-     [:p [:strong "Time zones on:"]  " " (time-str local) " " tz]
-     [:p [:strong "Time zones off:"] " " (time-str zulu)]]))
+     [:p [:strong "Time zone adjusted:"]  " " (time-str local) " " tz]
+     [:p [:strong "Time zone ignored:"] " " (time-str cest)]]))
 
 (defn profile-body [profile]
   (let [profile-dir (File. (util/profile-root) profile)
