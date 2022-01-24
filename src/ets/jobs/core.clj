@@ -197,11 +197,11 @@
   (and (= destination "a_coruna")
        (#{"lisboa" "sevilla" "pamplona"} origin)))
 
-#_(defn taste-the-sun
+(defn taste-the-sun
   "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
   [{:keys [cargo recipient]}]
   (and (= "engeron" recipient)
-       (adr-cargo? cargo)))
+       (:adr (map/cargos cargo))))
 
 
 ; TODO Test this one - no jobs found.
@@ -218,13 +218,6 @@
   (and (= "scania_fac" sender)
        (= "trucks" cargo)))
 
-; TODO Test this one - no jobs found.
-(defn sailor
-  "Deliver yachts to all Scandinavian marinas (marina)."
-  [{:keys [cargo recipient]}]
-  (and (= "marina" recipient)
-       (= "yacht" cargo)))
-
 (def scandinavia-cities
   #{; Denmark
     "aalborg" "esbjerg" "frederikshavn" "gedser" "hirtshals" "kobenhavn" "odense"
@@ -234,6 +227,13 @@
     "goteborg" "helsingborg" "jonkoping" "kalmar" "kapellskar" "karlskrona"
     "linkoping" "malmo" "nynashamn" "orebro" "stockholm" "sodertalje"
     "trelleborg" "uppsala" "vasteraas" "vaxjo"})
+
+(defn sailor
+  "Deliver yachts to all Scandinavian marinas (marina)."
+  [{:keys [cargo destination recipient]}]
+  (and (scandinavia-cities destination)
+       (= "marina" recipient)
+       (= "yacht" cargo)))
 
 (defn cattle-drive
   "Complete a livestock delivery to Scandinavia."
@@ -344,6 +344,11 @@
    {:name   "Iberian Pilgrimage"
     :region "Iberia"
     :pred   iberian-pilgrimage}
+
+   :taste-the-sun
+   {:name   "Taste the Sun"
+    :region "Iberia"
+    :pred   taste-the-sun}
 
 
    :volvo-trucks-lover

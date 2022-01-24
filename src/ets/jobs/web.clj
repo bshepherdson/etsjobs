@@ -121,10 +121,13 @@
       :name "Let's Get Shipping"
       :desc "Deliver to all container ports in Iberia (TS Atlas)."}
 
-     ; TODO Taste the Sun
      {:key  :fleet-builder
       :name "Fleet Builder"
       :desc "Deliver to all shipyards in Iberia (Ocean Solution Group)."}
+
+     {:key  :taste-the-sun
+      :name "Taste the Sun"
+      :desc "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."}
 
      {:key  :iberian-pilgrimage
       :name "Iberian Pilgrimage"
@@ -173,6 +176,13 @@
   (let [{:keys [name adr]} (map/cargos slug)]
     [:td name (when adr (adr-symbols (first adr)))]))
 
+(defn city-td [slug]
+  (let [{:keys [city country flag]} (map/human-name slug)]
+    [:td.city city
+     [:span.grow]
+     [:span.country (when (= country "I") {:style "font-family: serif"}) country]
+     [:span.flag flag]]))
+
 (defn job-block [jobs]
   (html
     [:table
@@ -182,9 +192,9 @@
                    cargo distance]}                 jobs]
        [:tr
         [:td {:style "text-align: right"} (expiry-time expires-in-mins)]
-        [:td (map/human-name origin)]
+        (city-td origin)
         [:td (map/company-names sender)]
-        [:td (map/human-name destination)]
+        (city-td destination)
         [:td (map/company-names recipient)]
         [:td {:style "text-align: right"} (format "%dkm" distance)]
         (cargo-description cargo)])]))
@@ -223,8 +233,11 @@
         jobs        (jobs/achievable-jobs s)]
     (html [:div
            [:style "body {font-family: sans-serif;}
-                   td { padding: 0 8px }
-                   .adr {margin: 0 4px; padding: 0 2px}"]
+                   td { padding: 0 8px; }
+                   td.city {display: flex;}
+                   .flag {margin-left: 4px}
+                   .grow {flex-grow: 1; min-width: 12px;}
+                   .adr {margin: 0 4px; padding: 0 2px;}"]
            [:h1 (str "Jobs for " profile)]
            (sanity-check s)
            (for [r [:baltic :scandinavia :france :italia :iberia :black-sea]]
