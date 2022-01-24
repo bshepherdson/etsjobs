@@ -138,6 +138,41 @@
         mins  (mod  total-mins 60)]
     (format "%2dh%02d" hours mins)))
 
+(def adr-symbols
+  {:poison
+   [:span.adr.poison
+    {:style "border: 1px solid black; background: white; color: black"}
+    "Poison"]
+
+   :explosive
+   [:span.adr.explosive
+    {:style "background: orange; color: black"}
+    "Exposives"]
+
+   :gases
+   [:span.adr.gases
+    {:style "background: #0c7; color: black"}
+    "Gases"]
+
+   :flammable-liquids
+   [:span.adr.flammable-liquids
+    {:style "background: red; color: black"}
+    "Flammable Liquids"]
+
+   :flammable-solids
+   [:span.adr.flammable-liquids
+    {:style "background: #35d; color: white"}
+    "Flammable Solids"]
+
+   :corrosive
+   [:span.adr.flammable-liquids
+    {:style "background: black; color: white"}
+    "Corrosive"]})
+
+(defn cargo-description [slug]
+  (let [{:keys [name adr]} (map/cargos slug)]
+    [:td name (when adr (adr-symbols (first adr)))]))
+
 (defn job-block [jobs]
   (html
     [:table
@@ -152,7 +187,7 @@
         [:td (map/human-name destination)]
         [:td (map/company-names recipient)]
         [:td {:style "text-align: right"} (format "%dkm" distance)]
-        [:td cargo]])]))
+        (cargo-description cargo)])]))
 
 (defn achievement-section [{:keys [key name desc]} all-jobs]
   ; Sorting by descending time-to-live.
@@ -187,7 +222,9 @@
         s           (jobs/parse-latest profile-dir)
         jobs        (jobs/achievable-jobs s)]
     (html [:div
-           [:style "td { padding: 0 8px }"]
+           [:style "body {font-family: sans-serif;}
+                   td { padding: 0 8px }
+                   .adr {margin: 0 4px; padding: 0 2px}"]
            [:h1 (str "Jobs for " profile)]
            (sanity-check s)
            (for [r [:baltic :scandinavia :france :italia :iberia :black-sea]]

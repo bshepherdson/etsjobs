@@ -558,3 +558,301 @@
    "zelenye"        "Зелëные Поля"
    "zelenye_a"      "Зелëные Поля"
    })
+
+(def cargos
+  {"acetylene"      {:name "Acetylene" :adr #{:gases}}
+   "acid"           {:name "Acid" :adr #{:corrosive}}
+   "air_mails"      {:name "Air Mails"}
+   "aircft_tires"   {:name "Aircraft Tyres"}
+   "aircond"        {:name "Air Conditioners"}
+   "almond"         {:name "Almonds"}
+   "ammunition"     {:name "Ammunition" :adr #{:explosive}}
+   "apples"         {:name "Apples"}
+   "apples_c"       {:name "Apples"}
+   "arsenic"        {:name "Arsenic" :adr #{:poison}}
+   "asph_miller"    {:name "Asphalt Miller"}
+   "atl_cod_flt"    {:name "Atlantic Cod Fillet"}
+   "backfl_prev"    {:name "Backflow Preventers"}
+   "barley"         {:name "Barley"}
+   "basil"          {:name "Basil"}
+   "beans"          {:name "Beans"}
+   "beef_meat"      {:name "Beef"}
+   "beverages"      {:name "Beverages"}
+   "beverages_c"    {:name "Beverages"}
+   "beverages_t"    {:name "Beverages"}
+   "big_bag_seed"   {:name "Big-Bags of Seeds"}
+   "boric_acid"     {:name "Boric Acid"}
+   "bottle_water"   {:name "Bottled Water"}
+   "brake_fluid"    {:name "Brake Fluid"}
+   "brake_pads"     {:name "Brake Pads"}
+   "bricks"         {:name "Bricks"}
+   "cable_reel"     {:name "Industrial Cable Reel"}
+   "can_sardines"   {:name "Canned Sardines"}
+   "canned_beans"   {:name "Canned Beans"}
+   "canned_beef"    {:name "Canned Beef"}
+   "canned_pork"    {:name "Canned Pork"}
+   "canned_tuna"    {:name "Canned Tuna"}
+   "car_balt1"      {:name "Cars"}
+   "car_balt2"      {:name "Cars?"}
+   "car_ibe"        {:name "Cars"}
+   "car_it"         {:name "Cars"}
+   "carb_water"     {:name "Carbonated Water"}
+   "carbn_pwdr_c"   {:name "Carbon Black Powder"}
+   "carrots"        {:name "Carrots"}
+   "carrots_c"      {:name "Carrots"}
+   "cars_fr"        {:name "Cars"}
+   "cauliflower"    {:name "Cauliflower"}
+   "caviar"         {:name "Caviar"}
+   "cement"         {:name "Cement"}
+   "cheese"         {:name "Cheese"}
+   "chem_sorb_c"    {:name "Chemical Sorbent"}
+   "chem_sorbent"   {:name "Chemical Sorbet"}
+   "chemicals"      {:name "Chemicals" :adr #{:gases}}
+   "chewing_gums"   {:name "Chewing Gums"}
+   "chicken_meat"   {:name "Chicken Meat"}
+   "chimney_syst"   {:name "Chimney Systems"}
+   "chlorine"       {:name "Chlorine" :adr #{:gases}}
+   "chocolate"      {:name "Chocolate"}
+   "clothes"        {:name "Clothes"}
+   "clothes_c"      {:name "Clothes"}
+   "coal"           {:name "Coal"}
+   "coconut_milk"   {:name "Coconut Milk"}
+   "coconut_oil"    {:name "Coconut Oil"}
+   "comp_process"   {:name "Computer Processors"}
+   "conc_juice_t"   {:name "Concentrate Juices"}
+   "concen_juice"   {:name "Concentrate Juices"}
+   "concr_beams"    {:name "Concrete Beams"}
+   "concr_beams2"   {:name "Concrete Beams"}
+   "concr_cent"     {:name "Concrete Centering"}
+   "concr_stair"    {:name "Concrete Stairs"}
+   "cont_trees"     {:name "Containerized Trees"}
+   "contamin"       {:name "Contaminated Material" :adr #{:poison}}
+   "copp_rf_gutt"   {:name "Copper Roof Gutters"}
+   "corks"          {:name "Corks"}
+   "cott_cheese"    {:name "Cottage Cheese"}
+   "cut_flowers"    {:name "Cut Flowers"}
+   "cyanide"        {:name "Cyanide" :adr #{:poison}}
+   "desinfection"   {:name "Disinfectant"}
+   "diesel"         {:name "Diesel" :adr #{:flammable-liquids}}
+   "diesel_gen"     {:name "Diesel Generators"}
+   "digger1000"     {:name "Wheel Loader"}
+   "digger500"      {:name "Backhoe Loader"}
+   "diggers"        {:name "Loaders"}
+   "dozer"          {:name "Dozer Crawl - Z35K"}
+   "driller"        {:name "Driller - D-50"}
+   "dryers"         {:name "Dryers"}
+   "drymilk"        {:name "Dry Milk"}
+   "dynamite"       {:name "Dynamite" :adr #{:explosive}}
+   "elect_wiring"   {:name "Electrical Wiring"}
+   "electronics"    {:name "Electronics"}
+   "emp_wine_bot"   {:name "Empty Wine Bottles"}
+   "empty_barr"     {:name "Empty Barrels"}
+   "empty_palet"    {:name "Empty Palettes"}
+   "emptytank"      {:name "Reservoir Tank?"}
+   "excav_soil"     {:name "Excavated Soil"}
+   "excavator"      {:name "Excavator"}
+   "exhausts_c"     {:name "Exhaust Systems"}
+   "explosives"     {:name "Explosives" :adr #{:explosive}}
+   "fertilizer"     {:name "Fertilizer"}
+   "fireworks"      {:name "Fireworks" :adr #{:explosive}}
+   "fish_chips"     {:name "Fish Fingers"}
+   "floorpanels"    {:name "Floor Panels"}
+   "flour"          {:name "Flour"}
+   "fluorine"       {:name "Fluorine" :adr #{:gases}}
+   "forklifts"      {:name "Forklifts"}
+   "fresh_fish"     {:name "Fresh Fish"}
+   "froz_octopi"    {:name "Frozen Octopi"}
+   "frozen_hake"    {:name "Frozen Hake"}
+   "frsh_herbs"     {:name "Fresh Herbs"}
+   "fuel_oil"       {:name "Fuel Oil" :adr #{:flammable-liquids}}
+   "fuel_tanks"     {:name "Fuel Tanks"}
+   "fueltanker"     {:name "Fuel Tanker" :adr #{:flammable-liquids}}
+   "furniture"      {:name "Furniture"}
+   "garlic"         {:name "Garlic"}
+   "glass"          {:name "Glass Panels?"}
+   "glass_packed"   {:name "Packed Glass"}
+   "gnocchi"        {:name "Gnocchi"}
+   "goat_cheese"    {:name "Goat Cheese"}
+   "granite_cube"   {:name "Granite Cube"}
+   "grapes"         {:name "Grapes"}
+   "graph_grease"   {:name "Graphite Grease"}
+   "grass_rolls"    {:name "Grass Rolls"}
+   "gravel"         {:name "Gravel"}
+   "guard_rails"    {:name "Guard Rails"}
+   "gummy_bears"    {:name "Gummy Bears"}
+   "harvest_bins"   {:name "Harvesting Bins"}
+   "hchemicals"     {:name "Hot Chemicals" :adr #{:gases}}
+   "helicopter"     {:name "Helicopter - 1808TX"}
+   "hi_volt_cabl"   {:name "High Voltage Cables"}
+   "hipresstank"    {:name "Pressure Tank"}
+   "hmetal"         {:name "Heavy Metals" :adr #{:poison}}
+   "honey"          {:name "Honey"}
+   "hwaste"         {:name "Hospital Waste" :adr #{:poison}}
+   "ibc_cont"       {:name "IBC Containers"}
+   "icecream"       {:name "Ice Cream"}
+   "iced_coffee"    {:name "Canned Iced Coffee"}
+   "iron_pipes"     {:name "Iron Pipes"}
+   "iveco_vans"     {:name "Braco Vans"}
+   "kerosene"       {:name "Kerosene" :adr #{:flammable-liquids}}
+   "ketchup"        {:name "Ketchup"}
+   "lamb_stom"      {:name "Lamb Stomachs"}
+   "largetubes"     {:name "Large Tubes"}
+   "lavender"       {:name "Lavender"}
+   "lead"           {:name "Lead"}
+   "limonades"      {:name "Lemonade"}
+   "live_catt_fr"   {:name "Live Cattle"}
+   "live_cattle"    {:name "Live Cattle"}
+   "liver_paste"    {:name "Liver Paste"}
+   "locomotive"     {:name "Locomotive - Vossloh G6"}
+   "logs"           {:name "Logs"}
+   "lpg"            {:name "LPG" :adr #{:flammable-liquids}}
+   "lumber"         {:name "Lumber"}
+   "lux_yacht"      {:name "Yacht - Queen V39"}
+   "magnesium"      {:name "Magnesium" :adr #{:flammable-solids}}
+   "maple_syrup"    {:name "Maple Syrup"}
+   "marb_blck"      {:name "Marble Blocks"}
+   "marb_blck2"     {:name "Marble Blocks"}
+   "marb_slab"      {:name "Marble Slab"}
+   "mason_jars"     {:name "Mason Jars"}
+   "med_equip"      {:name "Medical Equipment"}
+   "med_vaccine"    {:name "Medical Vaccines" :adr #{:poison}}
+   "mercuric"       {:name "Mercuric Chloride" :adr #{:poison}}
+   "metal_beams"    {:name "Metal Beams"}
+   "metal_cans"     {:name "Metal Cans"}
+   "metal_center"   {:name "Metal Centering"}
+   "metal_pipes"    {:name "Iron Pipes"}
+   "milk"           {:name "Milk"}
+   "milk_t"         {:name "Milk"}
+   "mobile_crane"   {:name "Mobile Crane"}
+   "mondeos"        {:name "mondeos???"}
+   "moto_tires"     {:name "Motorcycle Tyres"}
+   "motor_oil"      {:name "Motor Oil"}
+   "motor_oil_c"    {:name "Motor Oil"}
+   "motorcycles"    {:name "Motorcycles"}
+   "mozzarela"      {:name "Mozzarela"}
+   "mtl_coil"       {:name "Metal Coil"}
+   "natur_rubber"   {:name "Natural Rubber"}
+   "neon"           {:name "Neon" :adr #{:gases}}
+   "nitrocel"       {:name "Nitrocellulose" :adr #{:flammable-solids}}
+   "nitrogen"       {:name "Nitrogen" :adr #{:gases}}
+   "nonalco_beer"   {:name "Non-alcoholic Beer"}
+   "nuts"           {:name "Nuts"}
+   "nylon_cord"     {:name "Nylon Cord"}
+   "oil"            {:name "Oil" :adr #{:flammable-liquids}}
+   "oil_filt_c"     {:name "Oil Filters"}
+   "oil_filters"    {:name "Oil Filters"}
+   "olive_oil"      {:name "Olive Oil"}
+   "olive_oil_t"    {:name "Olive Oil"}
+   "olive_tree"     {:name "Olive tree??"}
+   "olives"         {:name "Olives"}
+   "onion"          {:name "Onions"}
+   "oranges"        {:name "Oranges"}
+   "ore"            {:name "Ore"}
+   "outdr_flr_tl"   {:name "Outdoor Floor Tiles"}
+   "overweight"     {:name "Overweight something???"}
+   "packag_food"    {:name "Packaged Food"}
+   "paper"          {:name "Paper"}
+   "pears"          {:name "Pears"}
+   "peas"           {:name "Peas"}
+   "perfor_frks"    {:name "Performance Forks"}
+   "pesticide"      {:name "Pesticides" :adr #{:poison}}
+   "pesto"          {:name "Pesto"}
+   "pet_food"       {:name "Pet Food"}
+   "pet_food_c"     {:name "Pet Food"}
+   "petrol"         {:name "Gasoline/Petrol" :adr #{:flammable-liquids}}
+   "phosphor"       {:name "White Phosphorus" :adr #{:flammable-solids}}
+   "plant_substr"   {:name "Plant Substrate"}
+   "plast_film"     {:name "Plastic Film Rolls"}
+   "plast_film_c"   {:name "Plastic Film Rolls"}
+   "plastic_gra"    {:name "Plastic Granules"}
+   "plumb_suppl"    {:name "Plumbing Supplies"}
+   "plums"          {:name "Plums"}
+   "pnut_butter"    {:name "Peanut Butter"}
+   "polyst_box"     {:name "Polystyrene Boxes"}
+   "pork_meat"      {:name "Pork"}
+   "post_packag"    {:name "Post Packages"}
+   "pot_flowers"    {:name "Potted Flowers"}
+   "potahydro"      {:name "Potassium Hydroxide" :adr #{:corrosive}}
+   "potassium"      {:name "Potassium" :adr #{:flammable-solids}}
+   "potatoes"       {:name "Potatoes"}
+   "precast_strs"   {:name "Precast Stairs"}
+   "prosciutto"     {:name "Prosciutto"}
+   "protec_cloth"   {:name "Protective Clothing"}
+   "radiators"      {:name "Radiators"}
+   "re_bars"        {:name "Reinforcing Bars"}
+   "refl_posts"     {:name "Reflective Posts"}
+   "rice"           {:name "Rice"}
+   "rice_c"         {:name "Rice"}
+   "roller"         {:name "Roller - DYNA CC-2200"}
+   "roof_tiles"     {:name "Roof Tiles"}
+   "roofing_felt"   {:name "Roofing Felt"}
+   "rooflights"     {:name "Rooflights"}
+   "rye"            {:name "Rye"}
+   "salm_fillet"    {:name "Salmon Fillet"}
+   "salt_spice_c"   {:name "Salt & Spices"}
+   "salt_spices"    {:name "Salt & Spices"}
+   "sand"           {:name "Sand"}
+   "sandwch_pnls"   {:name "Sandwich Panels"}
+   "sausages"       {:name "Sausages"}
+   "sawpanels"      {:name "Sawdust Panels"}
+   "scaffoldings"   {:name "Scaffoldings"}
+   "scania_tr"      {:name "Scania Trucks"}
+   "scooters"       {:name "Scooters"}
+   "scrap_metals"   {:name "Scrap Metals"}
+   "seal_bearing"   {:name "Sealed Bearings"}
+   "sheep_wool"     {:name "Sheep Wool"}
+   "shock_absorb"   {:name "Shock Absorbers"}
+   "silica"         {:name "Silica"}
+   "smokd_eel"      {:name "Smoked Eel"}
+   "smokd_sprats"   {:name "Smoked Sprats"}
+   "sodchlor"       {:name "Sodium Hypochloride" :adr #{:corrosive}}
+   "sodhydro"       {:name "Sodium Hydroxide" :adr #{:corrosive}}
+   "sodium"         {:name "Sodium" :adr #{:flammable-solids}}
+   "soy_milk"       {:name "Soy Milk"}
+   "soy_milk_t"     {:name "Soy Milk"}
+   "sq_tub"         {:name "Square Tubings"}
+   "steel_cord"     {:name "Steel Cord"}
+   "stone_dust"     {:name "Stone Dust"}
+   "stone_wool"     {:name "Stone Wool"}
+   "stones"         {:name "Stones"}
+   "straw_bales"    {:name "Straw Bales"}
+   "sugar"          {:name "Sugar"}
+   "sulfuric"       {:name "Sulfuric Acid" :adr #{:corrosive}}
+   "tableware"      {:name "Tableware"}
+   "tomatoes"       {:name "Tomatoes"}
+   "toys"           {:name "Toys"}
+   "tracks"         {:name "Tracks"}
+   "tractor"        {:name "Crawler Tractor"}
+   "tractors"       {:name "Tractors"}
+   "train_part"     {:name "Train Axles?"}
+   "train_part2"    {:name "Train Undercarriage?"}
+   "transformat"    {:name "Transformer - PK900"}
+   "transmis"       {:name "Transmissions"}
+   "truck_batt"     {:name "Truck Batteries"}
+   "truck_batt_c"   {:name "Truck Batteries"}
+   "truck_rims"     {:name "Truck Rims"}
+   "truck_rims_c"   {:name "Truck Rims"}
+   "truck_tyres"    {:name "Truck Tyres"}
+   "tube"           {:name "Large Tubes"}
+   "tyres"          {:name "Tyres"}
+   "used_battery"   {:name "Used Car Batteries"}
+   "used_packag"    {:name "Used Packaging"}
+   "used_plast"     {:name "Used Plastics"}
+   "used_plast_c"   {:name "Used Plastics?"}
+   "vent_tube"      {:name "Ventilation Shaft"}
+   "vinegar"        {:name "Vinegar"}
+   "vinegar_c"      {:name "Vinegar"}
+   "volvo_cars"     {:name "Cars"}
+   "wallpanels"     {:name "Wall Panels"}
+   "watermelons"    {:name "Watermelons"}
+   "wheat"          {:name "Wheat"}
+   "windml_eng"     {:name "Wind Turbine Nacelle"}
+   "windml_tube"    {:name "Wind Turbine Tower"}
+   "wood_bark"      {:name "Wood Bark"}
+   "wooden_beams"   {:name "Wooden Beams"}
+   "wrk_cloth"      {:name "Work Clothes"}
+   "wshavings"      {:name "Wood Shavings"}
+   "yacht"          {:name "Yacht"}
+   "yogurt"         {:name "Yoghurt"}
+   "young_seed"     {:name "Young Seedlings"}})
+

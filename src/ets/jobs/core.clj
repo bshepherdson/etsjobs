@@ -98,10 +98,12 @@
          :urgency         (get o "urgency")}))))
 
 
+(defn baltic? [city-slug]
+  (#{"EST" "FI" "LT" "LV" "RU"} (:c (map/cities city-slug))))
+
 (defn concrete-jungle [{:keys [sender origin]}]
-  (let [{:keys [c]} (map/cities origin)]
-    (and (#{"EST" "FI" "LT" "LV" "RU"} c)
-         (= "radus" sender))))
+  (and (baltic? origin)
+       (= "radus" sender)))
 
 (defn industry-standard
   "2 deliveries to every paper mill, loco factory, and furniture factory in
