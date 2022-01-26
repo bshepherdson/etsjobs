@@ -60,18 +60,14 @@ all landmarks).
 be done in order, only one of the city pairs is open at a time. You'll have to
 keep track of that.
 
-A few are missing because I haven't gotten around to implementing them yet.
-
-- "Taste the Sun" is missing because I don't have a list of ADR cargoes.
-- "Grand Tour" is not implemented because it would list way too many jobs to be
-  useful. That one isn't hard to search for.
+"Grand Tour" is not implemented because it would list way too many jobs to be
+useful. That one isn't hard to search for by hand.
 
 
 ## Future Work
 
 There are four main lines of future work:
 
-- Adding the missing achievements.
 - ATS support.
 - Stretching: ordering jobs by proximity to the player, or by some kind of
   `distance / expiration time` "plausibility" metric. This lists many jobs that
