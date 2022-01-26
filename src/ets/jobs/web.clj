@@ -224,8 +224,8 @@
     [:section
      [:h2 "Sanity Check"]
      [:p "Check you have up-to-date jobs by confirming the in-game time."]
-     [:p [:strong "Time zone adjusted:"]  " " (time-str local) " " tz]
-     [:p [:strong "Time zone ignored:"] " " (time-str cest)]]))
+     [:p [:strong "Time zones on:"]  " " (time-str local) " " tz]
+     [:p [:strong "Time zones off:"] " " (time-str cest)]]))
 
 (defn profile-body [profile]
   (let [profile-dir (File. (util/profile-root) profile)

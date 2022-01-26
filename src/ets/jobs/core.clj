@@ -410,26 +410,27 @@
 
 
 (def open-achievements
-  #{:whatever-floats-your-boat
-    :gas-must-flow
-    :go-nuclear
-    :along-the-black-sea
+  #{:along-the-black-sea
     :captain
-    :turkish-delight
-    :orient-express
     :check-in-check-out
     :concrete-jungle
-    :like-a-farmer
-    :sailor
-    :lets-get-shipping
-    :michaelangelo
-    :scania-trucks-lover
-    :industry-standard
     :exclave-transit
-    :miner
     :fleet-builder
+    :gas-must-flow
+    :go-nuclear
+    :iberian-pilgrimage
+    :industry-standard
+    :lets-get-shipping
+    :like-a-farmer
+    :michaelangelo
+    :miner
+    :orient-express
+    :sailor
+    :scania-trucks-lover
+    :taste-the-sun
+    :turkish-delight
     :volvo-trucks-lover
-    :iberian-pilgrimage})
+    :whatever-floats-your-boat})
 
 
 (defn jobs-for [jobs {:keys [pred]}]
@@ -511,10 +512,10 @@
   (def cities (clojure.set/union (into #{} (map :origin (all-jobs p)))
                                  (into #{} (map :destination (all-jobs p)))))
 
-  (identity cities)
+  (identity companies)
 
   ; Predicate for "Concrete Jungle": sender is Radus.
-  (filter  (all-jobs p))
+  (filter taste-the-sun (all-jobs p))
   (current-time p)
 
   (get-in p [:structures 20])
