@@ -1,4 +1,4 @@
-(ns ets.jobs.map)
+(ns ets.jobs.ets2.map)
 
 (def flags
   {"A"   "&#127462&#127481"

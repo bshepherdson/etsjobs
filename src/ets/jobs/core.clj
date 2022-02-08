@@ -2,22 +2,20 @@
   (:require
     [clojure.java.io :as io]
     [clojure.string :as str]
+    [ets.jobs.ats.achievements  :as ats-achievements]
+    [ets.jobs.ets2.achievements :as ets-achievements]
     [ets.jobs.decrypt :as decrypt]
     [ets.jobs.sii-file :as sf]
     [ets.jobs.sii-file-text :as sft]
-    [ets.jobs.util :as util]
-    [ets.jobs.map :as map])
+    [ets.jobs.util :as util])
   (:import
     [java.io File]))
-
-(defn decode [file]
-  (sf/parse-sii (decrypt/decode file)))
 
 (defn sii-struct [s name]
   (first (filter #(= name (:name %)) (vals (:structures s)))))
 
 (defn by-type [s typ]
-  (for [[k d] (:data s)
+  (for [[_ d] (:data s)
         :when (= typ (:type d))]
     d))
 
@@ -64,21 +62,6 @@
      :local (time-breakdown (+ now tz-delta))
      :tz    (time-zone-names (get eco "time_zone_name"))}))
 
-(comment
-  (let [now        (current-time p)
-        companies  (get (economy p) "companies")
-        c1         (by-id p (first companies))
-        job-ids    (get c1 "job_offer")
-        jobs       (map #(by-id p %) job-ids)
-        ]
-    jobs
-    )
-
-  (let [])
-  (economy p)
-  (all-jobs p)
-  (local-time p)
-  )
 
 (defn all-jobs [s]
   (let [now (current-time s)]
@@ -100,354 +83,9 @@
          :urgency         (get o "urgency")}))))
 
 
-(defn baltic? [city-slug]
-  (#{"EST" "FI" "LT" "LV" "RU"} (:c (map/cities city-slug))))
-
-(defn concrete-jungle [{:keys [sender origin]}]
-  (and (baltic? origin)
-       (= "radus" sender)))
-
-(defn industry-standard
-  "2 deliveries to every paper mill, loco factory, and furniture factory in
-  the Baltic states.
-  Those are LVR, Renat, Viljo Paperitehdas Oy, Estonian Paper AS, and VPF
-  (lvr, renat, viljo_paper, ee_paper, viln_paper)."
-  [{:keys [recipient]}]
-  (#{"lvr" "renat" "viljo_paper" "ee_paper" "viln_paper"} recipient))
-
-(def russian-main-cities
-  #{"luga" "pskov" "petersburg" "sosnovy_bor" "vyborg"})
-
-(defn exclave-transit
-  "Delivery from Kaliningrad to other Russian cities."
-  [{:keys [origin destination]}]
-  (and (= "kaliningrad" origin)
-       (russian-main-cities destination)))
-
-(defn like-a-farmer
-  "Deliver to each farm in the Baltic region.
-  Agrominta UAB (agrominta, agrominta_a; both near Utena LT)
-  Eviksi (eviksi, eviksi_a; (double near Liepaja LV))
-  Maatila Egres (egres)
-  Onnelik talu (onnelik, onnelik_a; double near Parna EST)
-  Zelenye Polja (zelenye, zelenye_a)"
-  [{:keys [recipient]}]
-  (#{"agrominta" "agrominta_a"
-     "eviksi" "eviksi_a"
-     "egres"
-     "onnelik" "onnelik_a"
-     "zelenye" "zelenye_a"}
-    recipient))
-
-(defn turkish-delight
-  [{:keys [origin distance]}]
-  (and (>= distance 2500)
-       (= "istanbul" origin)))
-
-(defn along-the-black-sea
-  "Perfect deliveries either direction between these pairs:
-  Istanbul-Burgas
-  Burgas-Varna
-  Varna-Mangalia
-  Mangalia-Constanta"
-  [{:keys [origin destination]}]
-  (or (and (= origin      "istanbul")
-           (= destination "burgas"))
-      (and (= origin      "burgas")
-           (= destination "istanbul"))
-      (and (= origin      "burgas")
-           (= destination "varna"))
-      (and (= origin      "varna")
-           (= destination "burgas"))
-      (and (= origin      "varna")
-           (= destination "mangalia"))
-      (and (= origin      "mangalia")
-           (= destination "varna"))
-      (and (= origin      "mangalia")
-           (= destination "constanta"))
-      (and (= origin      "constanta")
-           (= destination "mangalia"))))
-
-(defn orient-express
-  [{:keys [origin destination]}]
-  (or (and (= origin      "paris")
-           (= destination "strasbourg"))
-      (and (= origin      "strasbourg")
-           (= destination "munchen"))
-      (and (= origin      "munchen")
-           (= destination "wien"))
-      (and (= origin      "wien")
-           (= destination "budapest"))
-      (and (= origin      "budapest")
-           (= destination "bucuresti"))
-      (and (= origin      "bucuresti")
-           (= destination "istanbul"))))
-
-(defn lets-get-shipping
-  "Deliver to all container ports in Iberia (TS Atlas)."
-  [{:keys [recipient]}]
-  (= "ts_atlas" recipient))
-
-(defn fleet-builder
-  "Deliver to all shipyards in Iberia (Ocean Solution Group, ocean_sol)."
-  [{:keys [recipient]}]
-  (= "ocean_sol" recipient))
-
-(defn iberian-pilgrimage
-  "Deliver from Lisbon, Seville and Pamplona to A Coruna."
-  [{:keys [origin destination]}]
-  (and (= destination "a_coruna")
-       (#{"lisboa" "sevilla" "pamplona"} origin)))
-
-(defn taste-the-sun
-  "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
-  [{:keys [cargo recipient]}]
-  (and (= "engeron" recipient)
-       (:adr (map/cargos cargo))))
-
-
-; TODO Test this one - no jobs found.
-(defn volvo-trucks-lover
-  "Deliver trucks from the Volvo factory to a dealer."
-  [{:keys [cargo sender]}]
-  (and (= "volvo_fac" sender)
-       (= "trucks" cargo)))
-
-; TODO Test this one - no jobs found.
-(defn scania-trucks-lover
-  "Deliver trucks from Scania factory to a dealer."
-  [{:keys [cargo sender]}]
-  (and (= "scania_fac" sender)
-       (= "trucks" cargo)))
-
-(def scandinavia-cities
-  #{; Denmark
-    "aalborg" "esbjerg" "frederikshavn" "gedser" "hirtshals" "kobenhavn" "odense"
-    ; Norway
-    "bergen" "kristiansand" "oslo" "stavanger"
-    ; Sweden
-    "goteborg" "helsingborg" "jonkoping" "kalmar" "kapellskar" "karlskrona"
-    "linkoping" "malmo" "nynashamn" "orebro" "stockholm" "sodertalje"
-    "trelleborg" "uppsala" "vasteraas" "vaxjo"})
-
-(defn sailor
-  "Deliver yachts to all Scandinavian marinas (marina)."
-  [{:keys [cargo destination recipient]}]
-  (and (scandinavia-cities destination)
-       (= "marina" recipient)
-       (= "yacht" cargo)))
-
-(defn cattle-drive
-  "Complete a livestock delivery to Scandinavia."
-  [{:keys [destination cargo]}]
-  (and (= "livestock" cargo)
-       (scandinavia-cities destination)))
-
-(defn whatever-floats-your-boat
-  "Deliver to all container ports in Scandinavia (cont_port)."
-  [{:keys [destination recipient]}]
-  (and (= "cont_port" recipient)
-       (scandinavia-cities destination)))
-
-(defn miner
-  "Deliver to all quarries in Scandinavia (nord_sten, ms_stein)."
-  [{:keys [destination recipient]}]
-  (and (#{"nord_sten" "ms_stein"} recipient)
-       (scandinavia-cities destination)))
-
-; France
-(def french-reactors
-  #{"civaux" "golfech" "paluel" "alban" "laurent"})
-
-(defn go-nuclear
-  "Deliver to 5 nuclear plants in France (nucleon)."
-  [{:keys [destination recipient]}]
-  (and (= "nucleon" recipient)
-       (french-reactors destination)))
-
-(def french-airports
-  #{"bastia" "brest" "calvi" "clermont" "montpellier"
-    "nantes" "paris" "toulouse"})
-
-(defn check-in-check-out
-  "Deliver to all cargo airport terminals in France (fle, in France.)"
-  [{:keys [destination recipient]}]
-  (and (= "fle" recipient)
-       (french-airports destination)))
-
-; TODO Implement this one once I can see a "gas must flow" job.
-(defn gas-must-flow
-  "Deliver petrol/gasoline, diesel, or LPG to all truck stops in France."
-  [_]
-  false)
-
-
-; Italy
-(defn captain
-  "Deliver to all Italian shipyards (c_navale)."
-  [{:keys [recipient]}]
-  (= "c_navale" recipient))
-
-(defn michaelangelo
-  "Deliver from the Carrara quarry (marmo in Livorno)."
-  [{:keys [origin sender]}]
-  (and (= "marmo" sender)
-       (= "livorno" origin)))
-
-
-(def regions
-  {:scandinavia
-   {:name "Scandinavia"
-    :achievements
-    [{:key  :whatever-floats-your-boat
-      :name "Whatever Floats Your Boat"
-      :desc "Deliver to all container ports in Scandinavia (Container Port)."
-      :pred whatever-floats-your-boat}
-
-     {:key  :sailor
-      :name "Sailor"
-      :desc "Deliver yachts to all Scandinavian marinas (boat symbol)."
-      :pred sailor}
-
-     {:key  :volvo-trucks-lover
-      :name "Volvo Trucks Lover"
-      :desc "Deliver trucks from the Volvo factory."
-      :pred volvo-trucks-lover}
-     {:key  :scania-trucks-lover
-      :name "Scania Trucks Lover"
-      :desc "Deliver trucks from the Scania factory."
-      :pred scania-trucks-lover}
-
-     {:key  :cattle-drive
-      :name "Cattle Drive"
-      :desc "Complete a livestock delivery to Scandinavia."
-      :pred cattle-drive}
-
-     {:key  :miner
-      :name "Miner"
-      :desc "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
-      :pred miner}]}
-
-   :baltic
-   {:name "Beyond the Baltic Sea"
-    :achievements
-    [{:key  :concrete-jungle
-      :name "Concrete Jungle"
-      :desc "Complete 10 deliveries from concrete plants (Radus, Радус)"
-      :pred concrete-jungle}
-
-     {:key  :industry-standard
-      :name "Industry Standard"
-      :desc (str "Complete 2 deliveries to every paper mill, loco factory, and"
-                 "furniture maker in the Baltic region (LVR, Renat, Viljo "
-                 "Paperitehdas Oy, Estonian Paper AS, VPF).")
-      :pred industry-standard}
-
-     {:key  :exclave-transit
-      :name "Exclave Transit"
-      :desc "Complete 5 deliveries from Kaliningrad to any other Russian city."
-      :pred exclave-transit}
-
-     {:key  :like-a-farmer
-      :name "Like a Farmer"
-      :desc "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
-      :pred like-a-farmer}]}
-
-   :black-sea
-   {:name "Road to the Black Sea"
-    :achievements
-    [{:key  :turkish-delight
-      :name "Turkish Delight"
-      :desc "Complete 3 deliveries from Istanbul which are at least 2500km long."
-      :pred turkish-delight}
-
-     {:key  :along-the-black-sea
-      :name "Along the Black Sea"
-      :desc "Complete perfect deliveries in any order or direction between these coastal cities."
-      :pred along-the-black-sea}
-
-     {:key  :orient-express
-      :name "Orient Express"
-      :desc "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
-      :pred orient-express}]}
-
-   :italia
-   {:name "Italia"
-    :achievements
-    [{:key  :captain
-      :name "Captain"
-      :desc "Deliver to all Italian shipyards. (Cantiare Navale)"
-      :pred captain}
-
-     {:key  :michaelangelo
-      :name "Michaelangelo"
-      :desc "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
-      :pred michaelangelo}]}
-
-   :vive-la-france
-   {:name "Vive la France"
-    :achievements
-    [{:key  :go-nuclear
-      :name "Go Nuclear"
-      :desc "Deliver to five nuclear power plants in France. (Nucleon)"
-      :pred go-nuclear}
-
-     {:key  :check-in-check-out
-      :name "Check in, Check out"
-      :desc "Deliver to all cargo airport terminals in France (FLE)."
-      :pred check-in-check-out}
-
-     {:key  :gas-must-flow
-      :name "Gas Must Flow"
-      :desc "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
-      :pred gas-must-flow}]}
-
-   :iberia
-   {:name "Iberia"
-    :achievements
-    [{:key  :lets-get-shipping
-      :name "Let's Get Shipping"
-      :desc "Deliver to all container ports in Iberia (TS Atlas)."
-      :pred lets-get-shipping}
-
-     {:key  :fleet-builder
-      :name "Fleet Builder"
-      :desc "Deliver to all shipyards in Iberia (Ocean Solution Group)."
-      :pred fleet-builder}
-
-     {:key  :taste-the-sun
-      :name "Taste the Sun"
-      :desc "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
-      :pred taste-the-sun}
-
-     {:key  :iberian-pilgrimage
-      :name "Iberian Pilgrimage"
-      :desc "Deliver to A Coruña from Lisbon, Seville and Pamplona."
-      :pred iberian-pilgrimage}]}})
-
-
-(def open-achievements
-  #{:along-the-black-sea
-    :captain
-    :check-in-check-out
-    :concrete-jungle
-    :exclave-transit
-    :fleet-builder
-    :gas-must-flow
-    :go-nuclear
-    :iberian-pilgrimage
-    :industry-standard
-    :lets-get-shipping
-    :like-a-farmer
-    :michaelangelo
-    :miner
-    :orient-express
-    :sailor
-    :scania-trucks-lover
-    :taste-the-sun
-    :turkish-delight
-    :volvo-trucks-lover
-    :whatever-floats-your-boat})
+(def game-meta
+  {:ets2 ets-achievements/ets-meta
+   :ats  ats-achievements/ats-meta})
 
 
 (defn jobs-for [jobs {:keys [pred]}]
@@ -456,13 +94,14 @@
        (into #{})
        seq))
 
-(defn achievable-jobs [s]
-  (let [jobs (all-jobs s)]
+(defn achievable-jobs [game s]
+  (let [jobs (all-jobs s)
+        {:keys [regions open]} (game-meta game)]
     (into {}
           (for [[_ {:keys [achievements]}] regions
                 ach                        achievements
                 :let     [ak (:key ach)]
-                :when    (open-achievements ak)]
+                :when    (open ak)]
             [ak (jobs-for jobs ach)]))))
 
 (defn profile-info [dir]
@@ -498,48 +137,53 @@
               decrypt/decode
               sf/parse-sii))
 
+  (def ats-prof (->> "samples/42726164656E/profile.sii"
+                     decrypt/decode
+                     (util/spit-binary "ats-profile.txt")
+                     #_sft/parse-profile-basics))
+
+  (def ap-dir (->> (profiles (clojure.java.io/file "samples"))
+                   (filter #(= "Braden" (:name %)))
+                   first
+                   :dir))
+  (def ap (->> (File. (File. (File. ap-dir "save") "1") "game.sii")
+               decrypt/decode
+               sf/parse-sii))
+
+  (identity ats-prof)
+
   (identity p)
   (take 4 (:data p))
 
   (keys p)
-  (:structures p)
+  (:structures ap)
   (select-keys (economy p) ["game_time" "time_zone" "time_zone_name"])
+  (all-jobs ap)
 
   (get-in p [:structures 14])
   (sii-struct p "job_offer")
-  (by-id p (-> (by-type p 19)
-               first
-               (get "data")
-               first))
   ;now: 16425752
   (all-jobs p)
-  (achievable-jobs p)
+  (achievable-jobs :ets2 p)
+  (achievable-jobs :ats  ap)
   (by-type p 1)
-  (by-id p ["company" "volatile" "ibp" "helsinki"])
-  ; job offers [2265125696736 2265125696320 2265125698816 2265125699856]
-  (by-id p 2265125696736 )
-  (by-id p 2265125696320 )
-  (by-id p 2265125698816 )
-  (by-id p 2265125699856 )
-
-  (defn by-id [id]
-    (get-in p [:data id]))
 
   (def cargos (into #{} (map :cargo (all-jobs p))))
   (identity cargos)
 
-  (def companies (clojure.set/union (into #{} (map :sender    (all-jobs p)))
-                                    (into #{} (map :recipient (all-jobs p)))))
-  (def cities (clojure.set/union (into #{} (map :origin (all-jobs p)))
-                                 (into #{} (map :destination (all-jobs p)))))
+  (require 'clojure.set)
+  (def companies
+    (clojure.set/union (into #{} (map :sender    (all-jobs p)))
+                       (into #{} (map :recipient (all-jobs p)))))
+  (def cities
+    (clojure.set/union (into #{} (map :origin (all-jobs p)))
+                       (into #{} (map :destination (all-jobs p)))))
 
   (identity companies)
+  (identity cities)
 
-  ; Predicate for "Concrete Jungle": sender is Radus.
-  (filter taste-the-sun (all-jobs p))
   (current-time p)
 
   (get-in p [:structures 20])
 
   )
-
