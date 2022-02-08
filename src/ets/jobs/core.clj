@@ -295,118 +295,135 @@
        (= "livorno" origin)))
 
 
-(def achievements
-  {:concrete-jungle
-   {:name   "Concrete Jungle"
-    :region "Baltic"
-    :pred   concrete-jungle}
+(def regions
+  {:scandinavia
+   {:name "Scandinavia"
+    :achievements
+    [{:key  :whatever-floats-your-boat
+      :name "Whatever Floats Your Boat"
+      :desc "Deliver to all container ports in Scandinavia (Container Port)."
+      :pred whatever-floats-your-boat}
 
-   :industry-standard
-   {:name   "Industry Standard"
-    :region "Baltic"
-    :pred   industry-standard}
+     {:key  :sailor
+      :name "Sailor"
+      :desc "Deliver yachts to all Scandinavian marinas (boat symbol)."
+      :pred sailor}
 
-   :exclave-transit
-   {:name   "Exclave Transit"
-    :region "Baltic"
-    :pred   exclave-transit}
+     {:key  :volvo-trucks-lover
+      :name "Volvo Trucks Lover"
+      :desc "Deliver trucks from the Volvo factory."
+      :pred volvo-trucks-lover}
+     {:key  :scania-trucks-lover
+      :name "Scania Trucks Lover"
+      :desc "Deliver trucks from the Scania factory."
+      :pred scania-trucks-lover}
 
+     {:key  :cattle-drive
+      :name "Cattle Drive"
+      :desc "Complete a livestock delivery to Scandinavia."
+      :pred cattle-drive}
 
-   :like-a-farmer
-   {:name   "Like a Farmer"
-    :region "Baltic"
-    :pred   like-a-farmer}
+     {:key  :miner
+      :name "Miner"
+      :desc "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
+      :pred miner}]}
 
-   :turkish-delight
-   {:name   "Turkish Delight"
-    :region "Black Sea"
-    :pred   turkish-delight}
+   :baltic
+   {:name "Beyond the Baltic Sea"
+    :achievements
+    [{:key  :concrete-jungle
+      :name "Concrete Jungle"
+      :desc "Complete 10 deliveries from concrete plants (Radus, Радус)"
+      :pred concrete-jungle}
 
-   :along-the-black-sea
-   {:name   "Along the Black Sea"
-    :region "Black Sea"
-    :pred   along-the-black-sea}
+     {:key  :industry-standard
+      :name "Industry Standard"
+      :desc (str "Complete 2 deliveries to every paper mill, loco factory, and"
+                 "furniture maker in the Baltic region (LVR, Renat, Viljo "
+                 "Paperitehdas Oy, Estonian Paper AS, VPF).")
+      :pred industry-standard}
 
-   :orient-express
-   {:name   "Orient Express"
-    :region "Black Sea"
-    :pred   orient-express}
+     {:key  :exclave-transit
+      :name "Exclave Transit"
+      :desc "Complete 5 deliveries from Kaliningrad to any other Russian city."
+      :pred exclave-transit}
 
-   :lets-get-shipping
-   {:name   "Let's Get Shipping"
-    :region "Iberia"
-    :pred   lets-get-shipping}
+     {:key  :like-a-farmer
+      :name "Like a Farmer"
+      :desc "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
+      :pred like-a-farmer}]}
 
-   :fleet-builder
-   {:name   "Fleet Builder"
-    :region "Iberia"
-    :pred   fleet-builder}
+   :black-sea
+   {:name "Road to the Black Sea"
+    :achievements
+    [{:key  :turkish-delight
+      :name "Turkish Delight"
+      :desc "Complete 3 deliveries from Istanbul which are at least 2500km long."
+      :pred turkish-delight}
 
-   :iberian-pilgrimage
-   {:name   "Iberian Pilgrimage"
-    :region "Iberia"
-    :pred   iberian-pilgrimage}
+     {:key  :along-the-black-sea
+      :name "Along the Black Sea"
+      :desc "Complete perfect deliveries in any order or direction between these coastal cities."
+      :pred along-the-black-sea}
 
-   :taste-the-sun
-   {:name   "Taste the Sun"
-    :region "Iberia"
-    :pred   taste-the-sun}
+     {:key  :orient-express
+      :name "Orient Express"
+      :desc "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
+      :pred orient-express}]}
 
+   :italia
+   {:name "Italia"
+    :achievements
+    [{:key  :captain
+      :name "Captain"
+      :desc "Deliver to all Italian shipyards. (Cantiare Navale)"
+      :pred captain}
 
-   :volvo-trucks-lover
-   {:name   "Volvo Trucks Lover"
-    :region "Scandinavia"
-    :pred   volvo-trucks-lover}
+     {:key  :michaelangelo
+      :name "Michaelangelo"
+      :desc "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
+      :pred michaelangelo}]}
 
-   :scania-trucks-lover
-   {:name   "Scania Trucks Lover"
-    :region "Scandinavia"
-    :pred   scania-trucks-lover}
+   :vive-la-france
+   {:name "Vive la France"
+    :achievements
+    [{:key  :go-nuclear
+      :name "Go Nuclear"
+      :desc "Deliver to five nuclear power plants in France. (Nucleon)"
+      :pred go-nuclear}
 
-   :sailor
-   {:name   "Sailor"
-    :region "Scandinavia"
-    :pred   sailor}
+     {:key  :check-in-check-out
+      :name "Check in, Check out"
+      :desc "Deliver to all cargo airport terminals in France (FLE)."
+      :pred check-in-check-out}
 
-   :cattle-drive
-   {:name   "Cattle Drive"
-    :region "Scandinavia"
-    :pred   cattle-drive}
+     {:key  :gas-must-flow
+      :name "Gas Must Flow"
+      :desc "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
+      :pred gas-must-flow}]}
 
-   :whatever-floats-your-boat
-   {:name   "Whatever Floats your Boat"
-    :region "Scandinavia"
-    :pred   whatever-floats-your-boat}
+   :iberia
+   {:name "Iberia"
+    :achievements
+    [{:key  :lets-get-shipping
+      :name "Let's Get Shipping"
+      :desc "Deliver to all container ports in Iberia (TS Atlas)."
+      :pred lets-get-shipping}
 
-   :miner
-   {:name   "Miner"
-    :region "Scandinavia"
-    :pred   miner}
+     {:key  :fleet-builder
+      :name "Fleet Builder"
+      :desc "Deliver to all shipyards in Iberia (Ocean Solution Group)."
+      :pred fleet-builder}
 
-   :go-nuclear
-   {:name   "Go Nuclear"
-    :region "France"
-    :pred   go-nuclear}
+     {:key  :taste-the-sun
+      :name "Taste the Sun"
+      :desc "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
+      :pred taste-the-sun}
 
-   :check-in-check-out
-   {:name   "Check In, Check Out"
-    :region "France"
-    :pred   check-in-check-out}
-
-   :gas-must-flow
-   {:name   "Gas Must Flow"
-    :region "France"
-    :pred   gas-must-flow}
-
-   :captain
-   {:name   "Captain"
-    :region "Italy"
-    :pred   captain}
-
-   :michaelangelo
-   {:name   "Michaelangelo"
-    :region "Italy"
-    :pred   michaelangelo}})
+     {:key  :iberian-pilgrimage
+      :name "Iberian Pilgrimage"
+      :desc "Deliver to A Coruña from Lisbon, Seville and Pamplona."
+      :pred iberian-pilgrimage}]}})
 
 
 (def open-achievements
@@ -442,8 +459,10 @@
 (defn achievable-jobs [s]
   (let [jobs (all-jobs s)]
     (into {}
-          (for [[ak ach] achievements
-                :when (open-achievements ak)]
+          (for [[_ {:keys [achievements]}] regions
+                ach                        achievements
+                :let     [ak (:key ach)]
+                :when    (open-achievements ak)]
             [ak (jobs-for jobs ach)]))))
 
 (defn profile-info [dir]
@@ -482,6 +501,7 @@
   (identity p)
   (take 4 (:data p))
 
+  (keys p)
   (:structures p)
   (select-keys (economy p) ["game_time" "time_zone" "time_zone_name"])
 
@@ -493,6 +513,7 @@
                first))
   ;now: 16425752
   (all-jobs p)
+  (achievable-jobs p)
   (by-type p 1)
   (by-id p ["company" "volatile" "ibp" "helsinki"])
   ; job offers [2265125696736 2265125696320 2265125698816 2265125699856]
