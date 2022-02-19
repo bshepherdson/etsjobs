@@ -1,4 +1,4 @@
-(ns ets.jobs.decrypt
+(ns ets.jobs.decrypt.core
   (:require
     [clojure.java.io :as io])
   (:import

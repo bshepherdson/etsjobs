@@ -1,10 +1,10 @@
 (ns ets.jobs.http.core
   (:require
-    [ets.jobs.core :as jobs]
-    [ets.jobs.util :as util]
-    [hiccup.core :refer [html]]
-    [ets.jobs.ats.map  :as atsmap]
-    [ets.jobs.ets2.map :as ets2map])
+    [ets.jobs.ats.interface  :as atsmap]
+    [ets.jobs.ets2.interface :as ets2map]
+    [ets.jobs.files.interface :as files]
+    [ets.jobs.search.interface :as jobs]
+    [hiccup.core :refer [html]])
   (:import
     [java.io File]))
 
@@ -26,8 +26,8 @@
 
 
 (defn index [_]
-  (let [ets-profiles (jobs/profiles (util/profile-root :ets2))
-        ats-profiles (jobs/profiles (util/profile-root :ats))]
+  (let [ets-profiles (jobs/profiles (files/profile-root :ets2))
+        ats-profiles (jobs/profiles (files/profile-root :ats))]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body
@@ -150,7 +150,7 @@
   :ats  [:ca :nv :or :wa :id :ut :wy :co :nm :az]})
 
 (defn profile-body [game profile]
-  (let [profile-dir (File. (util/profile-root game) profile)
+  (let [profile-dir (File. (files/profile-root game) profile)
         s           (jobs/parse-latest profile-dir)
         jobs        (jobs/achievable-jobs game s)]
     (html [:div

@@ -1,0 +1,18 @@
+{:deps {org.clojure/clojure {:mvn/version "1.10.1"}
+        org.clojure/tools.deps.alpha {:mvn/version "0.12.985"}
+
+        ; Polylith components
+        poly/ats         {:local/root "../../components/ats"}
+        poly/decrypt     {:local/root "../../components/decrypt"}
+        poly/ets2        {:local/root "../../components/ets2"}
+        poly/files       {:local/root "../../components/files"}
+        poly/http        {:local/root "../../components/http"}
+        poly/search      {:local/root "../../components/search"}
+        poly/sii         {:local/root "../../components/sii"}
+
+        ; Polylith bases
+        poly/local       {:local/root "../../bases/local"}}
+
+ :aliases {:test {:extra-paths []
+                  :extra-deps  {}}
+           :uberjar {:main ets.jobs.main}}}
