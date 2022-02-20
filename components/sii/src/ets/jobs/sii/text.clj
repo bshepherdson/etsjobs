@@ -8,6 +8,11 @@
   [buf]
   (let [in (String. (.array buf))
         [_ name]     (re-find #"profile_name: (.*)" in)
+        [_ map-path] (re-find #"map_path: \"([^\"]*)\"" in)
         [_ saved-at] (re-find #"save_time: (\d+)"   in)]
-    {:name name
+    {:name     name
+     :map      (case map-path
+                 "/map/europe.mbd" :map/europe
+                 "/map/usa.mbd"    :map/usa
+                 map-path)
      :saved-at (Instant/ofEpochSecond (Integer/parseInt saved-at))}))

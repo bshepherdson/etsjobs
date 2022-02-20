@@ -327,29 +327,8 @@
       :desc "Deliver to A Coruña from Lisbon, Seville and Pamplona."
       :pred iberian-pilgrimage}]}})
 
-
-(def ^:private ets-open-achievements
-  #{:along-the-black-sea
-    :captain
-    :check-in-check-out
-    :concrete-jungle
-    :exclave-transit
-    :fleet-builder
-    :gas-must-flow
-    :go-nuclear
-    :iberian-pilgrimage
-    :industry-standard
-    :lets-get-shipping
-    :like-a-farmer
-    :michaelangelo
-    :miner
-    :orient-express
-    :sailor
-    :scania-trucks-lover
-    :taste-the-sun
-    :turkish-delight
-    :volvo-trucks-lover
-    :whatever-floats-your-boat})
+(defn- ets-open-achievements []
+  true)
 
 (def ets-meta
   {:regions ets-regions

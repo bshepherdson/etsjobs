@@ -5,6 +5,9 @@
 (defn latest-save [dir]
   (core/latest-save dir))
 
+(defn from-buf [buf]
+  (core/from-buf buf))
+
 (defn profile-root
   "Finds the root profile directory by platform.
   The game is either :ets2 or :ats.
@@ -13,4 +16,5 @@
   On Linux, HOME/.local/share/Euro Truck Simulator 2"
   [game]
   (core/profile-root game))
+
 

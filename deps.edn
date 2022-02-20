@@ -10,6 +10,7 @@
 
                    ; Polylith components
                    poly/ats         {:local/root "components/ats"}
+                   poly/databse     {:local/root "components/database"}
                    poly/decrypt     {:local/root "components/decrypt"}
                    poly/ets2        {:local/root "components/ets2"}
                    poly/files       {:local/root "components/files"}

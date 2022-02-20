@@ -123,11 +123,11 @@
 
 (comment
 
-  (def prof (->> "samples/426973686F70/profile.sii"
+  (def prof (->> "samples/ets2/426973686F70/profile.sii"
                  decrypt/decode
                  sii/parse-profile-basics
                  ))
-  (def profile-dir (->> (profiles (clojure.java.io/file "samples"))
+  (def profile-dir (->> (profiles (clojure.java.io/file "samples/ets2"))
                         (filter #(= "Bishop2" (:name %)))
                         first
                         :dir))
@@ -136,7 +136,7 @@
               decrypt/decode
               sii/parse-sii))
 
-  (def ap-dir (->> (profiles (clojure.java.io/file "samples"))
+  (def ap-dir (->> (profiles (clojure.java.io/file "samples/ats"))
                    (filter #(= "Braden" (:name %)))
                    first
                    :dir))

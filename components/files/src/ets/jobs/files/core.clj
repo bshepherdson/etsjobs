@@ -10,6 +10,9 @@
        (filter #(= "game.sii" (.getName %)))
        (apply max-key #(.lastModified %))))
 
+(defn from-buf [buf]
+  (String. (.array buf)))
+
 (defn spit-binary [f buf]
   (with-open [out (io/output-stream f)]
     (let [in (ByteArrayInputStream. (.array buf))]
