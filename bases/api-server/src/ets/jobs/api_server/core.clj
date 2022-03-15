@@ -46,14 +46,24 @@
 (comment
   (restart)
   (require '[datahike.api :as d])
+  (require '[ets.jobs.database.interface :as db])
   (let [conn (:db/conn (deref system))
         db   @conn]
-    (d/pull db '[*] [:profile/id "426973686F7032"])
+    #_(db/industry-standard db "426973686F7032" "kouvola/viljo_paper")
+    (d/q '[:find ?std ?loc
+             :in $ ?profile-id ?loc :where
+             [?profile :profile/id ?profile-id]
+             [?progress :progress/profile ?profile]
+             [?std :standard/progress ?progress]
+             [?std :standard/location ?loc]]
+         db "426973686F7032" "riga/renat")
     )
 
-  ; Capturing my current state for a few different achievements.
   (d/transact (:db/conn @system)
-              [])
+              [[:db/retractEntity 21]]
+              )
+
+  ; Capturing my current state for a few different achievements.
   (d/transact (:db/conn @system)
               (concat
                 (map #(assoc % :progress/profile [:profile/id "426973686F7032"])

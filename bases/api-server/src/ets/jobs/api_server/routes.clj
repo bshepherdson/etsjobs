@@ -26,6 +26,7 @@
 
 (defn ok [& args] (apply response 200 args))
 (defn created [& args] (apply response 201 args))
+(defn deleted [ctx] (response 204 ctx))
 
 (def put-profile
   "Idempotent creation of the achievement state for a specific profile.
@@ -46,8 +47,75 @@
    :enter
    (fn [ctx]
      (let [id      (get-in ctx [:request :path-params :id])
-           profile (db/fetch-profile (:db ctx) id)]
+           profile (db/fetch-profile (:db ctx) id)
+           ]
        (ok ctx profile)))})
+
+(def put-industry-standard
+  {:name ::put-industry-standard
+   :enter
+   (fn [ctx]
+     (let [id       (get-in ctx [:request :path-params :id])
+           body     (select-keys (get-in ctx [:request :edn-params])
+                                 [:standard/location :standard/count])]
+       (-> ctx
+           (assoc :tx-data (db/update-industry-standard (:db ctx) id body))
+           (ok))))})
+
+(def put-location-list
+  {:name ::put-location-list
+   :enter
+   (fn [ctx]
+     (let [id       (get-in ctx [:request :path-params :id])
+           {:keys [achievement location]}
+           (select-keys (get-in ctx [:request :edn-params])
+                        [:achievement :location])]
+       (-> ctx
+           (assoc :tx-data (db/put-location (:db ctx) id
+                                            achievement location))
+           (ok))))})
+
+(def delete-location-list
+  {:name ::delete-location-list
+   :enter
+   (fn [ctx]
+     (let [id       (get-in ctx [:request :path-params :id])
+           {:keys [achievement location]}
+           (select-keys (get-in ctx [:request :edn-params])
+                        [:achievement :location])]
+       (-> ctx
+           (assoc :tx-data (db/delete-location (:db ctx) id
+                                               achievement location))
+           (deleted))))})
+
+(def put-counted
+  {:name ::put-counted
+   :enter
+   (fn [ctx]
+     (let [id (get-in ctx [:request :path-params :id])
+           body (select-keys (get-in ctx [:request :edn-params])
+                             [:achievement :count])]
+       (-> ctx
+          (assoc :tx-data (db/update-count (:db ctx) id
+                                           (:achievement body) (:count body)))
+          (ok))))})
+
+
+(defn- boolean-toggle [name completed?]
+  {:name name
+   :enter
+   (fn [ctx]
+     (let [id   (get-in ctx [:request :path-params :id])
+           body (get-in ctx [:request :edn-params])]
+       (-> ctx
+           (assoc :tx-data (db/update-completion
+                             (:db ctx) id (:achievement body) completed?))
+           (ok))))})
+
+(def put-completed
+  (boolean-toggle ::put-completed true))
+(def delete-completed
+  (boolean-toggle ::delete-completed false))
 
 (defn routes [conn]
   (let [dbi (db-injector conn)]
@@ -55,5 +123,16 @@
       #{["/greet"   :get [respond-hello]]
         ["/profile" :put [dbi (body-params/body-params) put-profile]]
         ["/profile/:id" :get [dbi get-profile]]
-        })))
+        ["/profile/:id/standard" :put
+         [dbi (body-params/body-params) put-industry-standard]]
+        ["/profile/:id/loclist" :put
+         [dbi (body-params/body-params) put-location-list]]
+        ["/profile/:id/loclist" :delete
+         [dbi (body-params/body-params) delete-location-list]]
+        ["/profile/:id/counted" :put
+         [dbi (body-params/body-params) put-counted]]
+        ["/profile/:id/completed" :put
+         [dbi (body-params/body-params) put-completed]]
+        ["/profile/:id/completed" :delete
+         [dbi (body-params/body-params) delete-completed]]})))
 
