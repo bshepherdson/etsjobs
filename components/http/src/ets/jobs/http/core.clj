@@ -149,6 +149,11 @@
  {:ets2 [:baltic :scandinavia :france :italia :iberia :black-sea]
   :ats  [:ca :nv :or :wa :id :ut :wy :co :nm :az]})
 
+(defonce profile-cache
+  "Map of profile-id to [s jobs] set, holding the latest for each profile.
+  This greatly speeds up loading the page when navigating around."
+  (atom {}))
+
 (defn profile-body [game profile]
   (let [profile-dir (File. (files/profile-root game) profile)
         s           (jobs/parse-latest profile-dir)

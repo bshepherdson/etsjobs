@@ -149,9 +149,12 @@
   (take 4 (:data p))
 
   (keys p)
-  (:structures ap)
+  (:structures p)
+  (map :name  (vals (:structures p)))
+  (filter #(= "economy" (:name %)) (vals (:structures p)))
   (select-keys (economy p) ["game_time" "time_zone" "time_zone_name"])
   (all-jobs ap)
+  (by-id p (get (economy p) "player"))
 
   (get-in p [:structures 14])
   (sii-struct p "job_offer")
@@ -159,7 +162,7 @@
   (all-jobs p)
   (achievable-jobs :ets2 p)
   (achievable-jobs :ats  ap)
-  (by-type p 1)
+  (by-type p 36)
 
   (def cargos (into #{} (map :cargo (all-jobs p))))
   (identity cargos)
