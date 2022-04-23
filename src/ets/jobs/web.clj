@@ -146,7 +146,7 @@
      [:p [:strong "Time zones off:"] " " (time-str cest)]]))
 
 (def ^:private region-list
- {:ets2 [:baltic :scandinavia :france :italia :iberia :black-sea]
+ {:ets2 [:baltic :scandinavia :vive-la-france :italia :iberia :black-sea]
   :ats  [:ca :nv :or :wa :id :ut :wy :co :nm :az]})
 
 (defn profile-body [game profile]

@@ -177,11 +177,12 @@
   (and (= "fle" recipient)
        (french-airports destination)))
 
-; TODO Implement this one once I can see a "gas must flow" job.
 (defn gas-must-flow
   "Deliver petrol/gasoline, diesel, or LPG to all truck stops in France."
-  [_]
-  false)
+  [{:keys [cargo destination recipient]}]
+  (and (= "eco" recipient)
+       (#{"petrol" "gasoline" "diesel" "lpg"} cargo)
+       (= "F" (-> (get map/cities destination) :c))))
 
 
 ; Italy
