@@ -54,14 +54,14 @@
            :tz    'CEST'}.
   Note that the base time is, I think, CEST (Germany time) and not UTC!
   But the time zone is given relative to UTC, but CEST is UTC+2."
-  [s]
+  [game s]
   (let [now      (current-time s) ; CEST minutes from game epoch.
         eco      (economy s)
-        tz-delta (- (get eco "time_zone") 120)]
+        tz-fudge ({:ats 360 :ets2 -120} game)
+        tz-delta (+ tz-fudge (get eco "time_zone"))]
     {:cest  (time-breakdown now)
      :local (time-breakdown (+ now tz-delta))
      :tz    (time-zone-names (get eco "time_zone_name"))}))
-
 
 (defn all-jobs [s]
   (let [now (current-time s)]
@@ -139,10 +139,10 @@
 
   (def ats-prof (->> "samples/42726164656E/profile.sii"
                      decrypt/decode
-                     (util/spit-binary "ats-profile.txt")
+                     #_(util/spit-binary "ats-profile.txt")
                      #_sft/parse-profile-basics))
 
-  (def ap-dir (->> (profiles (clojure.java.io/file "samples"))
+  (def ap-dir (->> (profiles (clojure.java.io/file "samples/ats"))
                    (filter #(= "Braden" (:name %)))
                    first
                    :dir))
@@ -155,10 +155,12 @@
   (identity p)
   (take 4 (:data p))
 
-  (keys p)
+  (keys ap)
   (:structures ap)
-  (select-keys (economy p) ["game_time" "time_zone" "time_zone_name"])
+  (select-keys (economy ap) ["game_time" "time_zone" "time_zone_name"])
   (all-jobs ap)
+  (keys (economy ap))
+  (local-time ap)
 
   (get-in p [:structures 14])
   (sii-struct p "job_offer")

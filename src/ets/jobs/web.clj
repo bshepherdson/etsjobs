@@ -137,8 +137,8 @@
 (defn time-str [{:keys [week day hour mins]}]
   (format "Week %2d, %s %02d:%02d" week day hour mins))
 
-(defn sanity-check [s]
-  (let [{:keys [cest local tz]} (jobs/local-time s)]
+(defn sanity-check [game s]
+  (let [{:keys [cest local tz]} (jobs/local-time game s)]
     [:section
      [:h2 "Sanity Check"]
      [:p "Check you have up-to-date jobs by confirming the in-game time."]
@@ -161,7 +161,7 @@
                    .grow {flex-grow: 1; min-width: 12px;}
                    .adr {margin: 0 4px; padding: 0 2px;}"]
            [:h1 (str "Jobs for " profile)]
-           (sanity-check s)
+           (sanity-check game s)
            (for [r (region-list game)]
              (-> (jobs/game-meta game)
                  :regions
