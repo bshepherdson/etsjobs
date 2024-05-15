@@ -1,336 +1,487 @@
 (ns ets.jobs.ets2.achievements
   (:require
-    [ets.jobs.ets2.map :as map]))
+   [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
+   [com.wsscode.pathom3.connect.operation :as pco]
+   [com.wsscode.pathom3.connect.indexes :as pci]
+   [ets.jobs.ets2.map :as map]))
 
-(defn baltic? [city-slug]
-  (#{"EST" "FI" "LT" "LV" "RU"} (:c (map/cities city-slug))))
+(pco/defresolver baltic-country [{c :country/id}]
+  {:country/baltic? (boolean (#{"EST" "FI" "LT" "LV" "RU"} c))})
 
-(defn concrete-jungle [{:keys [sender origin]}]
-  (and (baltic? origin)
-       (= "radus" sender)))
+(defn- achievement [label spec f]
+  (let [flag   (keyword "job.cheevo" (name label))
+        output (keyword "jobs" (name label))] ; eg. :jobs/cattle-drive
+    [(pco/resolver label (merge {::pco/output [flag]} spec) f)
+     (pco/resolver (symbol (namespace label) (str (name label) "-jobs"))
+                   {::pco/input   [{:jobs/all-available [:job/id flag]}]
+                    ::pco/output  [{output              [:job/id]}]}
+                   (fn [_env {jobs :jobs/all-available}]
+                     {output (filter flag jobs)}))]))
 
-(defn industry-standard
+(defmacro ^:private defachievement
+  ([sym spec f] `(defachievement ~sym "(no docs)" ~spec ~f))
+  ([sym docstring spec f]
+   `(def ~(symbol sym) ~docstring
+      (achievement '~(symbol (str *ns*) (name sym)) ~spec ~f))))
+
+(defachievement concrete-jungle
+  {::pco/input [{:job/origin [:country/baltic? :company/id]}]}
+  (fn [_env
+       {{baltic? :country/baltic?
+         sender  :company/id}    :job/origin}]
+    {:job.cheevo/concrete-jungle (and baltic?
+                                      (= "radus" sender))}))
+
+(comment
+  concrete-jungle)
+
+(defachievement industry-standard
   "2 deliveries to every paper mill, loco factory, and furniture factory in
   the Baltic states.
   Those are LVR, Renat, Viljo Paperitehdas Oy, Estonian Paper AS, and VPF
   (lvr, renat, viljo_paper, ee_paper, viln_paper)."
-  [{:keys [recipient]}]
-  (#{"lvr" "renat" "viljo_paper" "ee_paper" "viln_paper"} recipient))
+  {}
+  (fn [_env {{recipient :company/id} :job/destination}]
+    {:job.cheevo/industry-standard
+     (boolean (#{"lvr" "renat" "viljo_paper" "ee_paper" "viln_paper"} recipient))}))
 
-(def russian-main-cities
-  #{"luga" "pskov" "petersburg" "sosnovy_bor" "vyborg"})
-
-(defn exclave-transit
+(defachievement exclave-transit
   "Delivery from Kaliningrad to other Russian cities."
-  [{:keys [origin destination]}]
-  (and (= "kaliningrad" origin)
-       (russian-main-cities destination)))
+  {::pco/input [{:job/origin      [:city/id]}
+                {:job/destination [:city/id :country/id]}]}
+  (fn [_env
+       {{origin       :city/id}    :job/origin
+        {dest         :city/id
+         dest-country :country/id} :job/destination}]
+    {:job.cheevo/exclave-transit (and (= "kaliningrad" origin)
+                                      (not= "kaliningrad" dest)
+                                      (= "RU" dest-country))}))
 
-(defn like-a-farmer
+(defachievement like-a-farmer
   "Deliver to each farm in the Baltic region.
   Agrominta UAB (agrominta, agrominta_a; both near Utena LT)
   Eviksi (eviksi, eviksi_a; (double near Liepaja LV))
   Maatila Egres (egres)
   Onnelik talu (onnelik, onnelik_a; double near Parna EST)
   Zelenye Polja (zelenye, zelenye_a)"
-  [{:keys [recipient]}]
-  (#{"agrominta" "agrominta_a"
-     "eviksi" "eviksi_a"
-     "egres"
-     "onnelik" "onnelik_a"
-     "zelenye" "zelenye_a"}
-    recipient))
+  {}
+  (fn [_env {{recipient :company/id} :job/destination}]
+    {:job.cheevo/like-a-farmer (boolean (#{"agrominta" "agrominta_a"
+                                           "eviksi" "eviksi_a"
+                                           "egres"
+                                           "onnelik" "onnelik_a"
+                                           "zelenye" "zelenye_a"}
+                                          recipient))}))
 
-(defn turkish-delight
-  [{:keys [origin distance]}]
-  (and (>= distance 2500)
-       (= "istanbul" origin)))
+(defachievement turkish-delight
+  "Deliveries from Istanbul at least 2500km long."
+  {::pco/input [{:job/origin [:city/id]}
+                :job/distance]}
+  (fn [_env
+       {{origin :city/id} :job/origin
+        :keys [job/distance]}]
+    {:job.cheevo/turkish-delight (and (>= distance 2500)
+                                      (= origin "istanbul"))}))
 
-(defn along-the-black-sea
+#_(pco/defresolver turkish-delight
+  [{{origin :city/id} :job/origin
+    distance           :job/distance}]
+  {::pco/input  [{:job/origin [:city/id]}
+                 :job/distance]
+   ::pco/output [:job.cheevo/turkish-delight]}
+  {:job.cheevo/turkish-delight (and (>= distance 2500)
+                                    (= origin "istanbul"))})
+
+#_(pco/defresolver turkish-delight-jobs
+  [{jobs :jobs/all-available}]
+  {::pco/input  [{:jobs/all-available   [:job/id :job.cheevo/turkish-delight]}]
+   ::pco/output [{:jobs/turkish-delight [:job/id]}]}
+  {:jobs/turkish-delight (for [job jobs
+                               :when (:job.cheevo/turkish-delight job)]
+                           (select-keys job [:job/id]))})
+
+(defachievement along-the-black-sea
   "Perfect deliveries either direction between these pairs:
   Istanbul-Burgas
   Burgas-Varna
   Varna-Mangalia
   Mangalia-Constanta"
-  [{:keys [origin destination]}]
-  (or (and (= origin      "istanbul")
-           (= destination "burgas"))
-      (and (= origin      "burgas")
-           (= destination "istanbul"))
-      (and (= origin      "burgas")
-           (= destination "varna"))
-      (and (= origin      "varna")
-           (= destination "burgas"))
-      (and (= origin      "varna")
-           (= destination "mangalia"))
-      (and (= origin      "mangalia")
-           (= destination "varna"))
-      (and (= origin      "mangalia")
-           (= destination "constanta"))
-      (and (= origin      "constanta")
-           (= destination "mangalia"))))
+  {::pco/input [{:job/origin      [:city/id]
+                 :job/destination [:city/id]}]}
+  (fn [_env
+       {{origin      :city/id} :job/origin
+        {destination :city/id} :job/destination}]
+    {:job.cheevo/along-the-black-sea
+     (some #(= (into #{} [origin destination]) %)
+           [#{"istanbul" "burgas"}
+            #{"burgas" "varna"}
+            #{"varna" "mangalia"}
+            #{"mangalia" "constanta"}])}))
 
-(defn orient-express
-  [{:keys [origin destination]}]
-  (or (and (= origin      "paris")
-           (= destination "strasbourg"))
-      (and (= origin      "strasbourg")
-           (= destination "munchen"))
-      (and (= origin      "munchen")
-           (= destination "wien"))
-      (and (= origin      "wien")
-           (= destination "budapest"))
-      (and (= origin      "budapest")
-           (= destination "bucuresti"))
-      (and (= origin      "bucuresti")
-           (= destination "istanbul"))))
+(defachievement orient-express
+  {::pco/input [{:job/origin      [:city/id]
+                 :job/destination [:city/id]}]}
+  (fn [_env
+       {{origin      :city/id} :job/origin
+        {destination :city/id} :job/destination}]
+    {:job.cheevo/orient-express
+     (some #(= [origin destination] %)
+           [["paris" "strasbourg"]
+            ["strasbourg" "munchen"]
+            ["munchen" "wien"]
+            ["wien" "budapest"]
+            ["budapest" "bucuresti"]
+            ["bucuresti" "istanbul"]])}))
 
-(defn lets-get-shipping
+(defachievement lets-get-shipping
   "Deliver to all container ports in Iberia (TS Atlas)."
-  [{:keys [recipient]}]
-  (= "ts_atlas" recipient))
+  {::pco/input [{:job/destination [:company/id]}]}
+  (fn [_env {{recipient :company/id} :job/destination}]
+    {:job.cheevo/lets-get-shipping (= "ts_atlas" recipient)}))
 
-(defn fleet-builder
+(defachievement fleet-builder
   "Deliver to all shipyards in Iberia (Ocean Solution Group, ocean_sol)."
-  [{:keys [recipient]}]
-  (= "ocean_sol" recipient))
+  {::pco/input [{:job/destination [:company/id]}]}
+  (fn [_env {{recipient :company/id} :job/destination}]
+    {:job.cheevo/fleet-builder (= "ocean_sol" recipient)}))
 
-(defn iberian-pilgrimage
+(defachievement iberian-pilgrimage
   "Deliver from Lisbon, Seville and Pamplona to A Coruna."
-  [{:keys [origin destination]}]
-  (and (= destination "a_coruna")
-       (#{"lisboa" "sevilla" "pamplona"} origin)))
+  {::pco/input [{:job/origin      [:city/id]}
+                {:job/destination [:city/id]}]}
+  (fn [_env
+       {{origin      :city/id} :job/origin
+        {destination :city/id} :job/destination}]
+    {:job.cheevo/iberian-pilgrimage
+     (boolean (and (= destination "a_coruna")
+                   (#{"lisboa" "sevilla" "pamplona"} origin)))}))
 
-(defn taste-the-sun
-  "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
-  [{:keys [cargo recipient]}]
-  (and (= "engeron" recipient)
-       (:adr (map/cargos cargo))))
+(defachievement taste-the-sun
+  "Deliver ADR cargo to all solar power plants in Iberia (engeron)."
+  {::pco/input [{:job/cargo       [(pco/? :cargo/adr)]}
+                {:job/destination [:company/id]}]}
+  (fn [_env
+       {{adr       :cargo/adr}  :job/cargo
+        {recipient :company/id} :job/destination}]
+    {:job.cheevo/taste-the-sun (boolean (and (= "engeron" recipient)
+                                             (not-empty adr)))}))
 
+;; Scandinavia ===============================================================
+(pco/defresolver scandinavian-country [{c :country/id}]
+  {:country/scandinavian? (boolean (#{"DK" "N" "S"} c))})
 
 ; TODO Test this one - no jobs found.
-(defn volvo-trucks-lover
+#_(pco/defresolver volvo-trucks-lover
   "Deliver trucks from the Volvo factory to a dealer."
   [{:keys [cargo sender]}]
   (and (= "volvo_fac" sender)
        (= "trucks" cargo)))
 
 ; TODO Test this one - no jobs found.
-(defn scania-trucks-lover
+#_(defn scania-trucks-lover
   "Deliver trucks from Scania factory to a dealer."
   [{:keys [cargo sender]}]
   (and (= "scania_fac" sender)
        (= "trucks" cargo)))
 
-(def scandinavia-cities
-  #{; Denmark
-    "aalborg" "esbjerg" "frederikshavn" "gedser" "hirtshals" "kobenhavn" "odense"
-    ; Norway
-    "bergen" "kristiansand" "oslo" "stavanger"
-    ; Sweden
-    "goteborg" "helsingborg" "jonkoping" "kalmar" "kapellskar" "karlskrona"
-    "linkoping" "malmo" "nynashamn" "orebro" "stockholm" "sodertalje"
-    "trelleborg" "uppsala" "vasteraas" "vaxjo"})
-
-(defn sailor
+(defachievement sailor
   "Deliver yachts to all Scandinavian marinas (marina)."
-  [{:keys [cargo destination recipient]}]
-  (and (scandinavia-cities destination)
-       (= "marina" recipient)
-       (= "yacht" cargo)))
+  {::pco/input [{:job/cargo       [:cargo/id]}
+                {:job/destination [:company/id :country/scandinavian?]}]}
+  (fn [_env
+       {{cargo     :cargo/id}              :job/cargo
+        {recipient :company/id
+         scandi?   :country/scandinavian?} :job/destination}]
+    {:job.cheevo/sailor (and scandi?
+                             (= "marina" recipient)
+                             (= "yacht" cargo))}))
 
-(defn cattle-drive
+(comment
+  (map (comp ::pco/input :config) sailor)
+  (map (comp ::pco/output :config) sailor))
+
+(defachievement cattle-drive
   "Complete a livestock delivery to Scandinavia."
-  [{:keys [destination cargo]}]
-  (and (= "livestock" cargo)
-       (scandinavia-cities destination)))
+  {::pco/input [{:job/cargo       [:cargo/id]}
+                {:job/destination [:country/scandinavian?]}]}
+  (fn [_env
+       {{cargo     :cargo/id}              :job/cargo
+        {scandi?   :country/scandinavian?} :job/destination}]
+    {:job.cheevo/cattle-drive (and scandi? (= "livestock" cargo))}))
 
-(defn whatever-floats-your-boat
+(defachievement whatever-floats-your-boat
   "Deliver to all container ports in Scandinavia (cont_port)."
-  [{:keys [destination recipient]}]
-  (and (= "cont_port" recipient)
-       (scandinavia-cities destination)))
+  {::pco/input [{:job/destination [:company/id :country/scandinavian?]}]}
+  (fn [_env
+       {{recipient :company/id
+         scandi?   :country/scandinavian?} :job/destination}]
+    {:job.cheevo/whatever-floats-your-boat (and scandi?
+                                                (= "cont_port" recipient))}))
 
-(defn miner
+(defachievement miner
   "Deliver to all quarries in Scandinavia (nord_sten, ms_stein)."
-  [{:keys [destination recipient]}]
-  (and (#{"nord_sten" "ms_stein"} recipient)
-       (scandinavia-cities destination)))
+  {::pco/input [{:job/destination [:company/id :country/scandinavian?]}]}
+  (fn [_env
+       {{recipient :company/id
+         scandi?   :country/scandinavian?} :job/destination}]
+    {:job.cheevo/miner (boolean (and scandi?
+                                     (#{"nord_sten" "ms_stein"} recipient)))}))
 
-; France
-(def french-reactors
-  #{"civaux" "golfech" "paluel" "alban" "laurent"})
-
-(defn go-nuclear
+;; France ====================================================================
+(defachievement go-nuclear
   "Deliver to 5 nuclear plants in France (nucleon)."
-  [{:keys [destination recipient]}]
-  (and (= "nucleon" recipient)
-       (french-reactors destination)))
+  {::pco/input [{:job/destination [:company/id :country/id]}]}
+  (fn [_env
+       {{recipient :company/id
+         country   :country/id} :job/destination}]
+    {:job.cheevo/go-nuclear (and (= "nucleon" recipient)
+                                 (= "F" country))}))
 
-(def french-airports
-  #{"bastia" "brest" "calvi" "clermont" "montpellier"
-    "nantes" "paris" "toulouse"})
-
-(defn check-in-check-out
+(defachievement check-in-check-out
   "Deliver to all cargo airport terminals in France (fle, in France.)"
-  [{:keys [destination recipient]}]
-  (and (= "fle" recipient)
-       (french-airports destination)))
+  {::pco/input [{:job/destination [:company/id :country/id]}]}
+  (fn [_env
+       {{recipient :company/id
+         country   :country/id} :job/destination}]
+    {:job.cheevo/check-in-check-out (and (= "fle" recipient)
+                                         (= "F" country))}))
 
-; TODO Implement this one once I can see a "gas must flow" job.
-(defn gas-must-flow
+;; TODO: Implement this one once I can see a "gas must flow" job.
+#_(pco/defresolver gas-must-flow
   "Deliver petrol/gasoline, diesel, or LPG to all truck stops in France."
-  [_]
-  false)
+  [{{cargo     :cargo/id}   :job/cargo
+    {recipient :company/id
+     country   :country/id} :job/destination}]
+  {::pco/input [{:job/destination [:company/id :country/id]}
+                {:job/cargo       [:cargo/id]}]}
+  {:job.cheevo/gas-must-flow (and (contains? #{"diesel" "lpg" "petrol"} cargo)
+                                  (= country "F")
+                                  (= recipient "something"))})
 
-
-; Italy
-(defn captain
+;; Italy =====================================================================
+(defachievement captain
   "Deliver to all Italian shipyards (c_navale)."
-  [{:keys [recipient]}]
-  (= "c_navale" recipient))
+  {::pco/input [{:job/destination [:company/id]}]}
+  (fn [_env {{recipient :company/id} :job/destination}]
+    {:job.cheevo/captain (= "c_navale" recipient)}))
 
-(defn michaelangelo
+(defachievement michaelangelo
   "Deliver from the Carrara quarry (marmo in Livorno)."
-  [{:keys [origin sender]}]
-  (and (= "marmo" sender)
-       (= "livorno" origin)))
+  {::pco/input [{:job/origin [:company/id :city/id]}]}
+  (fn [_env
+       {{sender :company/id
+         origin :city/id}   :job/origin}]
+    {:job.cheevo/michaelangelo (and (= "marmo" sender)
+                                    (= "livorno" origin))}))
 
+;; Schema for jobs:
+;; {:job/origin      {:city/id    "origin"
+;;                    :company/id "sender"}
+;;  :job/destination {:city/id    "destination"
+;;                    :company/id "recipient"}
+;;  :job/cargo       {:cargo/id   "things"}
+;;  :job/distance    1234 #_km}
 
-(def ^:private ets-regions
-  {:scandinavia
-   {:name "Scandinavia"
-    :achievements
-    [{:key  :whatever-floats-your-boat
-      :name "Whatever Floats Your Boat"
-      :desc "Deliver to all container ports in Scandinavia (Container Port)."
-      :pred whatever-floats-your-boat}
+(def ^:private achievements
+  (pbir/static-table-resolver
+    :cheevo/id
+    {:whatever-floats-your-boat
+     {:cheevo/name   "Whatever Floats Your Boat"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Deliver to all container ports in Scandinavia (Container Port)."
+      :cheevo/flag   :job.cheevo/whatever-floats-your-boat}
 
-     {:key  :sailor
-      :name "Sailor"
-      :desc "Deliver yachts to all Scandinavian marinas (boat symbol)."
-      :pred sailor}
+     :sailor
+     {:cheevo/name   "Sailor"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Deliver yachts to all Scandinavian marinas (boat symbol)."
+      :cheevo/flag   :job.cheevo/sailor}
 
-     {:key  :volvo-trucks-lover
-      :name "Volvo Trucks Lover"
-      :desc "Deliver trucks from the Volvo factory."
-      :pred volvo-trucks-lover}
-     {:key  :scania-trucks-lover
-      :name "Scania Trucks Lover"
-      :desc "Deliver trucks from the Scania factory."
-      :pred scania-trucks-lover}
+     :volvo-trucks-lover
+     {:cheevo/name   "Volvo Trucks Lover"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Deliver trucks from the Volvo factory."
+      :cheevo/flag   :job.cheevo/volvo-trucks-lover}
+     :scania-trucks-lover
+     {:cheevo/name   "Scania Trucks Lover"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Deliver trucks from the Scania factory."
+      :cheevo/flag   :job.cheevo/scania-trucks-lover}
 
-     {:key  :cattle-drive
-      :name "Cattle Drive"
-      :desc "Complete a livestock delivery to Scandinavia."
-      :pred cattle-drive}
+     :cattle-drive
+     {:cheevo/name   "Cattle Drive"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Complete a livestock delivery to Scandinavia."
+      :cheevo/flag   :job.cheevo/cattle-drive}
 
-     {:key  :miner
-      :name "Miner"
-      :desc "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
-      :pred miner}]}
+     :miner
+     {:cheevo/name   "Miner"
+      :cheevo/region :scandinavia
+      :cheevo/desc   "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
+      :cheevo/flag   :job.cheevo/miner}
 
-   :baltic
-   {:name "Beyond the Baltic Sea"
-    :achievements
-    [{:key  :concrete-jungle
-      :name "Concrete Jungle"
-      :desc "Complete 10 deliveries from concrete plants (Radus, Радус)"
-      :pred concrete-jungle}
+    ;; Baltic
+    :concrete-jungle
+    {:cheevo/name   "Concrete Jungle"
+     :cheevo/region :baltic
+     :cheevo/desc   "Complete 10 deliveries from concrete plants (Radus, Радус)"
+     :cheevo/flag   :job.cheevo/concrete-jungle}
 
-     {:key  :industry-standard
-      :name "Industry Standard"
-      :desc (str "Complete 2 deliveries to every paper mill, loco factory, and"
-                 "furniture maker in the Baltic region (LVR, Renat, Viljo "
-                 "Paperitehdas Oy, Estonian Paper AS, VPF).")
-      :pred industry-standard}
+    :industry-standard
+    {:cheevo/name   "Industry Standard"
+     :cheevo/region :baltic
+     :cheevo/desc   (str "Complete 2 deliveries to every paper mill, loco factory, and"
+                         "furniture maker in the Baltic region (LVR, Renat, Viljo "
+                         "Paperitehdas Oy, Estonian Paper AS, VPF).")
+     :cheevo/flag   :job.cheevo/industry-standard}
 
-     {:key  :exclave-transit
-      :name "Exclave Transit"
-      :desc "Complete 5 deliveries from Kaliningrad to any other Russian city."
-      :pred exclave-transit}
+    :exclave-transit
+    {:cheevo/name   "Exclave Transit"
+     :cheevo/region :baltic
+     :cheevo/desc   "Complete 5 deliveries from Kaliningrad to any other Russian city."
+     :cheevo/flag   :job.cheevo/exclave-transit}
 
-     {:key  :like-a-farmer
-      :name "Like a Farmer"
-      :desc "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
-      :pred like-a-farmer}]}
+    :like-a-farmer
+    {:cheevo/name   "Like a Farmer"
+     :cheevo/region :baltic
+     :cheevo/desc   "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
+     :cheevo/flag   :job.cheevo/like-a-farmer}
 
-   :black-sea
-   {:name "Road to the Black Sea"
-    :achievements
-    [{:key  :turkish-delight
-      :name "Turkish Delight"
-      :desc "Complete 3 deliveries from Istanbul which are at least 2500km long."
-      :pred turkish-delight}
+    ;; Beyond the Black Sea
+    :turkish-delight
+    {:cheevo/name   "Turkish Delight"
+     :cheevo/region :black-sea
+     :cheevo/desc   "Complete 3 deliveries from Istanbul which are at least 2500km long."
+     :cheevo/flag   :job.cheevo/turkish-delight}
 
-     {:key  :along-the-black-sea
-      :name "Along the Black Sea"
-      :desc "Complete perfect deliveries in any order or direction between these coastal cities."
-      :pred along-the-black-sea}
+    :along-the-black-sea
+    {:cheevo/name   "Along the Black Sea"
+     :cheevo/region :black-sea
+     :cheevo/desc   "Complete perfect deliveries in any order or direction between these coastal cities."
+     :cheevo/flag   :job.cheevo/along-the-black-sea}
 
-     {:key  :orient-express
-      :name "Orient Express"
-      :desc "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
-      :pred orient-express}]}
+    :orient-express
+    {:cheevo/name   "Orient Express"
+     :cheevo/region :black-sea
+     :cheevo/desc   "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
+     :cheevo/flag   :job.cheevo/orient-express}
 
-   :italia
-   {:name "Italia"
-    :achievements
-    [{:key  :captain
-      :name "Captain"
-      :desc "Deliver to all Italian shipyards. (Cantiare Navale)"
-      :pred captain}
+    ;; Italia
+    :captain
+    {:cheevo/name   "Captain"
+     :cheevo/region :italia
+     :cheevo/desc   "Deliver to all Italian shipyards. (Cantiare Navale)"
+     :cheevo/flag   :job.cheevo/captain}
 
-     {:key  :michaelangelo
-      :name "Michaelangelo"
-      :desc "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
-      :pred michaelangelo}]}
+    :michaelangelo
+    {:cheevo/name   "Michaelangelo"
+     :cheevo/region :italia
+     :cheevo/desc   "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
+     :cheevo/flag   :job.cheevo/michaelangelo}
 
-   :vive-la-france
-   {:name "Vive la France"
-    :achievements
-    [{:key  :go-nuclear
-      :name "Go Nuclear"
-      :desc "Deliver to five nuclear power plants in France. (Nucleon)"
-      :pred go-nuclear}
+    ;; Vive la France
+    :go-nuclear
+    {:cheevo/name   "Go Nuclear"
+     :cheevo/region :vive-la-france
+     :cheevo/desc   "Deliver to five nuclear power plants in France. (Nucleon)"
+     :cheevo/flag   :job.cheevo/go-nuclear}
 
-     {:key  :check-in-check-out
-      :name "Check in, Check out"
-      :desc "Deliver to all cargo airport terminals in France (FLE)."
-      :pred check-in-check-out}
+    :check-in-check-out
+    {:cheevo/name   "Check in, Check out"
+     :cheevo/region :vive-la-france
+     :cheevo/desc   "Deliver to all cargo airport terminals in France (FLE)."
+     :cheevo/flag   :job.cheevo/check-in-check-out}
 
-     {:key  :gas-must-flow
-      :name "Gas Must Flow"
-      :desc "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
-      :pred gas-must-flow}]}
+    :gas-must-flow
+    {:cheevo/name   "Gas Must Flow"
+     :cheevo/region :vive-la-france
+     :cheevo/desc   "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
+     :cheevo/flag   :job.cheevo/gas-must-flow}
 
-   :iberia
-   {:name "Iberia"
-    :achievements
-    [{:key  :lets-get-shipping
-      :name "Let's Get Shipping"
-      :desc "Deliver to all container ports in Iberia (TS Atlas)."
-      :pred lets-get-shipping}
+    ;; Iberia
+    :lets-get-shipping
+    {:cheevo/name   "Let's Get Shipping"
+     :cheevo/region :iberia
+     :cheevo/desc   "Deliver to all container ports in Iberia (TS Atlas)."
+     :cheevo/flag   :job.cheevo/lets-get-shipping}
 
-     {:key  :fleet-builder
-      :name "Fleet Builder"
-      :desc "Deliver to all shipyards in Iberia (Ocean Solution Group)."
-      :pred fleet-builder}
+    :fleet-builder
+    {:cheevo/name   "Fleet Builder"
+     :cheevo/region :iberia
+     :cheevo/desc   "Deliver to all shipyards in Iberia (Ocean Solution Group)."
+     :cheevo/flag   :job.cheevo/fleet-builder}
 
-     {:key  :taste-the-sun
-      :name "Taste the Sun"
-      :desc "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
-      :pred taste-the-sun}
+    :taste-the-sun
+    {:cheevo/name   "Taste the Sun"
+     :cheevo/region :iberia
+     :cheevo/desc   "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
+     :cheevo/flag   :job.cheevo/taste-the-sun}
 
-     {:key  :iberian-pilgrimage
-      :name "Iberian Pilgrimage"
-      :desc "Deliver to A Coruña from Lisbon, Seville and Pamplona."
-      :pred iberian-pilgrimage}]}})
+    :iberian-pilgrimage
+    {:cheevo/name   "Iberian Pilgrimage"
+     :cheevo/region :iberia
+     :cheevo/desc   "Deliver to A Coruña from Lisbon, Seville and Pamplona."
+     :cheevo/flag   :job.cheevo/iberian-pilgrimage}}))
 
-(defn- ets-open-achievements []
-  true)
+(def achievement-job-flags
+  [:job.cheevo/along-the-black-sea
+   :job.cheevo/captain
+   :job.cheevo/cattle-drive
+   :job.cheevo/check-in-check-out
+   :job.cheevo/concrete-jungle
+   :job.cheevo/exclave-transit
+   :job.cheevo/fleet-builder
+   #_:job.cheevo/gas-must-flow
+   :job.cheevo/go-nuclear
+   :job.cheevo/iberian-pilgrimage
+   :job.cheevo/industry-standard
+   :job.cheevo/lets-get-shipping
+   :job.cheevo/like-a-farmer
+   :job.cheevo/michaelangelo
+   :job.cheevo/miner
+   :job.cheevo/orient-express
+   :job.cheevo/sailor
+   #_:job.cheevo/scania-trucks-lover
+   :job.cheevo/taste-the-sun
+   :job.cheevo/turkish-delight
+   #_:job.cheevo/volvo-trucks-lover
+   :job.cheevo/whatever-floats-your-boat])
 
-(def ets-meta
-  {:regions ets-regions
-   :open    ets-open-achievements})
+(def ^:private regions
+  (pbir/static-table-resolver
+    :region/id
+    {:scandinavia    {:region/name "Scandinavia"}
+     :baltic         {:region/name "Beyond the Baltic Sea"}
+     :black-sea      {:region/name "Road to the Black Sea"}
+     :italia         {:region/name "Italia"}
+     :vive-la-france {:region/name "Vive la France"}
+     :iberia         {:region/name "Iberia"}}))
 
+(def index
+  (pci/register
+    [;; Top level
+     achievements
+     regions
+     ;; Misc
+     baltic-country
+     scandinavian-country
+     ;; Cheevo predicates
+     along-the-black-sea
+     captain
+     cattle-drive
+     check-in-check-out
+     concrete-jungle
+     exclave-transit
+     go-nuclear
+     iberian-pilgrimage
+     industry-standard
+     fleet-builder
+     lets-get-shipping
+     like-a-farmer
+     michaelangelo
+     miner
+     orient-express
+     sailor
+     taste-the-sun
+     turkish-delight
+     whatever-floats-your-boat]))

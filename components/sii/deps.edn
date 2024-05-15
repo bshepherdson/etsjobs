@@ -1,4 +1,7 @@
-{:paths ["src" "resources"]
- :deps {}
+{:paths   ["src" "resources"]
+ :deps    {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
+           instaparse/instaparse               {:mvn/version "1.4.14"}
+           #_#_parka/parka                         {:git/url "https://github.com/bshepherdson/parka.git"
+                                                :sha     "d1340ce3cee02ca05f8cdeafcaefe36f6b681077"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {}}}}

@@ -1,4 +1,7 @@
-{:paths ["src" "resources"]
- :deps {}
+{:paths   ["src" "resources"]
+ :deps    {com.wsscode/pathom3              {:git/url "https://github.com/wilkerlucio/pathom3"
+                                             :git/sha "2d9d1cf8ccfeee83566c31e776a5ef105b2a1626"}
+           #_{:mvn/version "2023.08.22-alpha"}
+           com.wsscode/pathom-viz-connector {:local/root  "../../../pathom-viz-connector"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {}}}}

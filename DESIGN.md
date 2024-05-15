@@ -67,3 +67,59 @@ table?
 Basic list of deliveries, but to "location/cargo".
 
 
+## Digging into the profile for progress
+
+Interesting singletons:
+
+- `bank` 1
+- `bank_loan` 1
+- `delivery_log` 1
+- `driver_player` 1
+- `economy` 1
+- `economy_event_queue` 1
+- `ferry_log` 1
+- `game_progress` 1
+- `player` 1
+- `player_job` 1
+- `oversize_offer_ctrl` 1
+- `registry` 1
+- `trailer` 1
+
+Other singletons
+
+- `bus_job_log` 1
+- `mail_ctrl` 1
+- `police_ctrl` 1
+
+Interesting manies:
+
+- `company` 1246
+- `delivery_log_entry` 166
+- `bus_stop` 109
+- `economy_event` 4334
+- `ferry_log_entry` 28
+- `job_info` 341
+- `job_offer_data` 4225
+- `map_action` 16
+- `oversize_offer` 98
+- `oversize_route_offers` 49
+- `profit_log` 551
+- `profit_log_entry` 292
+- `transport_data` 3
+
+Other manies:
+
+- `driver_ai` 341
+- `garage` 202
+- `gps_waypoint_storage` 2
+- `mail_def` 6
+- `vehicle` 7
+- `vehicle_accessory` 50
+- `vehicle_addon_accessory` 89
+- `vehicle_paint_job_accessory` 8
+- `vehicle_wheel_accessory` 63
+
+
+### Breaking down some structures in more detail
+
+#### Economy

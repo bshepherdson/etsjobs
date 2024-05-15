@@ -1,884 +1,895 @@
-(ns ets.jobs.ets2.map)
+(ns ets.jobs.ets2.map
+  (:require
+   [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
+   [com.wsscode.pathom3.connect.indexes :as pci]
+   [com.wsscode.pathom3.connect.operation :as pco]))
 
 (def flags
-  {"A"   "&#127462&#127481"
-   "B"   "&#127463&#127466"
-   "BG"  "&#127463&#127468"
-   "CH"  "&#127464&#127469"
-   "CZ"  "&#127464&#127487"
-   "D"   "&#127465&#127466"
-   "DK"  "&#127465&#127472"
-   "E"   "&#127466&#127480"
-   "EST" "&#127466&#127466"
-   "F"   "&#127467&#127479"
-   "FI"  "&#127467&#127470"
-   "GB"  "&#127468&#127463"
-   "H"   "&#127469&#127482"
-   "I"   "&#127470&#127481"
-   "L"   "&#127473&#127482"
-   "LT"  "&#127473&#127481"
-   "LV"  "&#127473&#127483"
-   "N"   "&#127475&#127476"
-   "NL"  "&#127475&#127473"
-   "P"   "&#127477&#127481"
-   "PL"  "&#127477&#127473"
-   "RO"  "&#127479&#127476"
-   "RU"  "&#127479&#127482"
-   "S"   "&#127480&#127466"
-   "SK"  "&#127480&#127472"
-   "TR"  "&#127481&#127479"})
+  (pbir/static-attribute-map-resolver
+   :country/id :country/flag
+   {"A"   "&#127462&#127481"
+    "B"   "&#127463&#127466"
+    "BG"  "&#127463&#127468"
+    "CH"  "&#127464&#127469"
+    "CZ"  "&#127464&#127487"
+    "D"   "&#127465&#127466"
+    "DK"  "&#127465&#127472"
+    "E"   "&#127466&#127480"
+    "EST" "&#127466&#127466"
+    "F"   "&#127467&#127479"
+    "FI"  "&#127467&#127470"
+    "GB"  "&#127468&#127463"
+    "H"   "&#127469&#127482"
+    "I"   "&#127470&#127481"
+    "L"   "&#127473&#127482"
+    "LT"  "&#127473&#127481"
+    "LV"  "&#127473&#127483"
+    "N"   "&#127475&#127476"
+    "NL"  "&#127475&#127473"
+    "P"   "&#127477&#127481"
+    "PL"  "&#127477&#127473"
+    "RO"  "&#127479&#127476"
+    "RU"  "&#127479&#127482"
+    "S"   "&#127480&#127466"
+    "SK"  "&#127480&#127472"
+    "TR"  "&#127481&#127479"}))
 
-(def cities
-  {
-   ; Spain (E, 39 cities)
-   "a_coruna"      {:c "E"   :name "A Coruña"}
-   "albacete"      {:c "E"   :name "Albacete"}
-   "algeciras"     {:c "E"   :name "Algeciras"}
-   "almaraz"       {:c "E"   :name "Almaraz"}
-   "almeria"       {:c "E"   :name "Almería"}
-   "badajoz"       {:c "E"   :name "Badajoz"}
-   "bailen"        {:c "E"   :name "Bailén"}
-   "barcelona"     {:c "E"   :name "Barcelona"}
-   "bilbao"        {:c "E"   :name "Bilbao"}
-   "burgos"        {:c "E"   :name "Burgos"}
-   "ciudad_real"   {:c "E"   :name "Ciudad Real"}
-   "cordoba"       {:c "E"   :name "Córdoba"}
-   "el_ejido"      {:c "E"   :name "El Ejido"}
-   "gijon"         {:c "E"   :name "Gijón"}
-   "granada"       {:c "E"   :name "Granada"}
-   "huelva"        {:c "E"   :name "Huelva"}
-   "leon"          {:c "E"   :name "León"}
-   "lleida"        {:c "E"   :name "Lleida"}
-   "madrid"        {:c "E"   :name "Madrid"}
-   "malaga"        {:c "E"   :name "Málaga"}
-   "mengibar"      {:c "E"   :name "Mengíbar"}
-   "murcia"        {:c "E"   :name "Murcia"}
-   "navia"         {:c "E"   :name "Navia"}
-   "o_barco"       {:c "E"   :name "O Barco"}
-   "pamplona"      {:c "E"   :name "Pamplona"}
-   "port_sagunt"   {:c "E"   :name "Port de Sagunt"}
-   "puertollano"   {:c "E"   :name "Puertollano"}
-   "salamanca"     {:c "E"   :name "Salamanca"}
-   "santander"     {:c "E"   :name "Santander"}
-   "sevilla"       {:c "E"   :name "Sevilla"}
-   "soria"         {:c "E"   :name "Soria"}
-   "tarragona"     {:c "E"   :name "Tarragona"}
-   "teruel"        {:c "E"   :name "Teruel"}
-   "valencia"      {:c "E"   :name "València"}
-   "valladolid"    {:c "E"   :name "Valladolid"}
-   "vandellos"     {:c "E"   :name "Vandellòs"}
-   "vigo"          {:c "E"   :name "Vigo"}
-   "villarreal"    {:c "E"   :name "Vila-real"}
-   "zaragoza"      {:c "E"   :name "Zaragoza"}
+(def ^:private cities
+  (pbir/static-table-resolver
+   :city/id
+   {; Spain (E, 39 cities)
+    "a_coruna"      {:country/id "E"   :city/name "A Coruña"}
+    "albacete"      {:country/id "E"   :city/name "Albacete"}
+    "algeciras"     {:country/id "E"   :city/name "Algeciras"}
+    "almaraz"       {:country/id "E"   :city/name "Almaraz"}
+    "almeria"       {:country/id "E"   :city/name "Almería"}
+    "badajoz"       {:country/id "E"   :city/name "Badajoz"}
+    "bailen"        {:country/id "E"   :city/name "Bailén"}
+    "barcelona"     {:country/id "E"   :city/name "Barcelona"}
+    "bilbao"        {:country/id "E"   :city/name "Bilbao"}
+    "burgos"        {:country/id "E"   :city/name "Burgos"}
+    "ciudad_real"   {:country/id "E"   :city/name "Ciudad Real"}
+    "cordoba"       {:country/id "E"   :city/name "Córdoba"}
+    "el_ejido"      {:country/id "E"   :city/name "El Ejido"}
+    "gijon"         {:country/id "E"   :city/name "Gijón"}
+    "granada"       {:country/id "E"   :city/name "Granada"}
+    "huelva"        {:country/id "E"   :city/name "Huelva"}
+    "leon"          {:country/id "E"   :city/name "León"}
+    "lleida"        {:country/id "E"   :city/name "Lleida"}
+    "madrid"        {:country/id "E"   :city/name "Madrid"}
+    "malaga"        {:country/id "E"   :city/name "Málaga"}
+    "mengibar"      {:country/id "E"   :city/name "Mengíbar"}
+    "murcia"        {:country/id "E"   :city/name "Murcia"}
+    "navia"         {:country/id "E"   :city/name "Navia"}
+    "o_barco"       {:country/id "E"   :city/name "O Barco"}
+    "pamplona"      {:country/id "E"   :city/name "Pamplona"}
+    "port_sagunt"   {:country/id "E"   :city/name "Port de Sagunt"}
+    "puertollano"   {:country/id "E"   :city/name "Puertollano"}
+    "salamanca"     {:country/id "E"   :city/name "Salamanca"}
+    "santander"     {:country/id "E"   :city/name "Santander"}
+    "sevilla"       {:country/id "E"   :city/name "Sevilla"}
+    "soria"         {:country/id "E"   :city/name "Soria"}
+    "tarragona"     {:country/id "E"   :city/name "Tarragona"}
+    "teruel"        {:country/id "E"   :city/name "Teruel"}
+    "valencia"      {:country/id "E"   :city/name "València"}
+    "valladolid"    {:country/id "E"   :city/name "Valladolid"}
+    "vandellos"     {:country/id "E"   :city/name "Vandellòs"}
+    "vigo"          {:country/id "E"   :city/name "Vigo"}
+    "villarreal"    {:country/id "E"   :city/name "Vila-real"}
+    "zaragoza"      {:country/id "E"   :city/name "Zaragoza"}
 
-   ; Romania (RO, 16 cities)
-   "bacau"         {:c "RO"  :name "Bacău"}
-   "brasov"        {:c "RO"  :name "Brașov"}
-   "bucuresti"     {:c "RO"  :name "București"}
-   "calarasi"      {:c "RO"  :name "Călărași"}
-   "cernavoda"     {:c "RO"  :name "Cernavodă"}
-   "cluj_napoca"   {:c "RO"  :name "Cluj-Napoca"}
-   "constanta"     {:c "RO"  :name "Constanța"}
-   "craiova"       {:c "RO"  :name "Craiova"}
-   "galati"        {:c "RO"  :name "Galați"}
-   "hunedoara"     {:c "RO"  :name "Romania"}
-   "iasi"          {:c "RO"  :name "Iași"}
-   "mangalia"      {:c "RO"  :name "Mangalia"}
-   "pitesti"       {:c "RO"  :name "Pitești"}
-   "resita"        {:c "RO"  :name "Reșița"}
-   "targu_mures"   {:c "RO"  :name "Târgu Mureș"}
-   "timisoara"     {:c "RO"  :name "Timișoara"}
+    ; Romania (RO, 16 cities)
+    "bacau"         {:country/id "RO"  :city/name "Bacău"}
+    "brasov"        {:country/id "RO"  :city/name "Brașov"}
+    "bucuresti"     {:country/id "RO"  :city/name "București"}
+    "calarasi"      {:country/id "RO"  :city/name "Călărași"}
+    "cernavoda"     {:country/id "RO"  :city/name "Cernavodă"}
+    "cluj_napoca"   {:country/id "RO"  :city/name "Cluj-Napoca"}
+    "constanta"     {:country/id "RO"  :city/name "Constanța"}
+    "craiova"       {:country/id "RO"  :city/name "Craiova"}
+    "galati"        {:country/id "RO"  :city/name "Galați"}
+    "hunedoara"     {:country/id "RO"  :city/name "Romania"}
+    "iasi"          {:country/id "RO"  :city/name "Iași"}
+    "mangalia"      {:country/id "RO"  :city/name "Mangalia"}
+    "pitesti"       {:country/id "RO"  :city/name "Pitești"}
+    "resita"        {:country/id "RO"  :city/name "Reșița"}
+    "targu_mures"   {:country/id "RO"  :city/name "Târgu Mureș"}
+    "timisoara"     {:country/id "RO"  :city/name "Timișoara"}
 
-   ; Italy (I, 27 cities?)
-   "ancona"        {:c "I"   :name "Ancona"}
-   "bari"          {:c "I"   :name "Bari"}
-   "bologna"       {:c "I"   :name "Bologna"}
-   "cagliari"      {:c "I"   :name "Cagliari"}
-   "cassino"       {:c "I"   :name "Cassino"}
-   "catania"       {:c "I"   :name "Catania"}
-   "catanzaro"     {:c "I"   :name "Catanzaro"}
-   "firenze"       {:c "I"   :name "Firenze"}
-   "genova"        {:c "I"   :name "Genoa"}
-   "livorno"       {:c "I"   :name "Livorno"}
-   "messina"       {:c "I"   :name "Messina"}
-   "milano"        {:c "I"   :name "Milano"}
-   "napoli"        {:c "I"   :name "Napoli"}
-   "olbia"         {:c "I"   :name "Olbia"}
-   "palermo"       {:c "I"   :name "Palermo"}
-   "parma"         {:c "I"   :name "Parma"}
-   "pescara"       {:c "I"   :name "Pescara"}
-   "roma"          {:c "I"   :name "Roma"}
-   "sangiovanni"   {:c "I"   :name "Villa San Giovanni"}
-   "sassari"       {:c "I"   :name "Sassari"}
-   "suzzara"       {:c "I"   :name "Suzzara"}
-   "taranto"       {:c "I"   :name "Taranto"}
-   "terni"         {:c "I"   :name "Terni"}
-   "torino"        {:c "I"   :name "Torino"}
-   "venezia"       {:c "I"   :name "Venezia"}
-   "verona"        {:c "I"   :name "Verona"}
+    ; Italy (I, 27 cities?)
+    "ancona"        {:country/id "I"   :city/name "Ancona"}
+    "bari"          {:country/id "I"   :city/name "Bari"}
+    "bologna"       {:country/id "I"   :city/name "Bologna"}
+    "cagliari"      {:country/id "I"   :city/name "Cagliari"}
+    "cassino"       {:country/id "I"   :city/name "Cassino"}
+    "catania"       {:country/id "I"   :city/name "Catania"}
+    "catanzaro"     {:country/id "I"   :city/name "Catanzaro"}
+    "firenze"       {:country/id "I"   :city/name "Firenze"}
+    "genova"        {:country/id "I"   :city/name "Genoa"}
+    "livorno"       {:country/id "I"   :city/name "Livorno"}
+    "messina"       {:country/id "I"   :city/name "Messina"}
+    "milano"        {:country/id "I"   :city/name "Milano"}
+    "napoli"        {:country/id "I"   :city/name "Napoli"}
+    "olbia"         {:country/id "I"   :city/name "Olbia"}
+    "palermo"       {:country/id "I"   :city/name "Palermo"}
+    "parma"         {:country/id "I"   :city/name "Parma"}
+    "pescara"       {:country/id "I"   :city/name "Pescara"}
+    "roma"          {:country/id "I"   :city/name "Roma"}
+    "sangiovanni"   {:country/id "I"   :city/name "Villa San Giovanni"}
+    "sassari"       {:country/id "I"   :city/name "Sassari"}
+    "suzzara"       {:country/id "I"   :city/name "Suzzara"}
+    "taranto"       {:country/id "I"   :city/name "Taranto"}
+    "terni"         {:country/id "I"   :city/name "Terni"}
+    "torino"        {:country/id "I"   :city/name "Torino"}
+    "trieste"       {:country/id "I"   :city/name "Trieste"}
+    "venezia"       {:country/id "I"   :city/name "Venezia"}
+    "verona"        {:country/id "I"   :city/name "Verona"}
 
-   ; Germany (D, 22 cities)
-   "berlin"        {:c "D"   :name "Berlin"}
-   "bremen"        {:c "D"   :name "Bremen"}
-   "dortmund"      {:c "D"   :name "Dortmund"}
-   "dresden"       {:c "D"   :name "Dresden"}
-   "duisburg"      {:c "D"   :name "Duisburg"}
-   "dusseldorf"    {:c "D"   :name "Düsseldorf"}
-   "erfurt"        {:c "D"   :name "Erfurt"}
-   "frankfurt"     {:c "D"   :name "Frankfurt"}
-   "hamburg"       {:c "D"   :name "Hamburg"}
-   "hannover"      {:c "D"   :name "Hannover"}
-   "kassel"        {:c "D"   :name "Kassel"}
-   "kiel"          {:c "D"   :name "Kiel"}
-   "koln"          {:c "D"   :name "Köln"}
-   "leipzig"       {:c "D"   :name "Leipzig"}
-   "magdeburg"     {:c "D"   :name "Magdeburg"}
-   "mannheim"      {:c "D"   :name "Mannheim"}
-   "munchen"       {:c "D"   :name "Munich"}
-   "nurnberg"      {:c "D"   :name "Nürnberg"}
-   "osnabruck"     {:c "D"   :name "Osnabrück"}
-   "rostock"       {:c "D"   :name "Rostock"}
-   "stuttgart"     {:c "D"   :name "Stuttgart"}
-   "travemunde"    {:c "D"   :name "Travemünde"}
+    ; Germany (D, 22 cities)
+    "berlin"        {:country/id "D"   :city/name "Berlin"}
+    "bremen"        {:country/id "D"   :city/name "Bremen"}
+    "dortmund"      {:country/id "D"   :city/name "Dortmund"}
+    "dresden"       {:country/id "D"   :city/name "Dresden"}
+    "duisburg"      {:country/id "D"   :city/name "Duisburg"}
+    "dusseldorf"    {:country/id "D"   :city/name "Düsseldorf"}
+    "erfurt"        {:country/id "D"   :city/name "Erfurt"}
+    "frankfurt"     {:country/id "D"   :city/name "Frankfurt"}
+    "hamburg"       {:country/id "D"   :city/name "Hamburg"}
+    "hannover"      {:country/id "D"   :city/name "Hannover"}
+    "kassel"        {:country/id "D"   :city/name "Kassel"}
+    "kiel"          {:country/id "D"   :city/name "Kiel"}
+    "koln"          {:country/id "D"   :city/name "Köln"}
+    "leipzig"       {:country/id "D"   :city/name "Leipzig"}
+    "magdeburg"     {:country/id "D"   :city/name "Magdeburg"}
+    "mannheim"      {:country/id "D"   :city/name "Mannheim"}
+    "munchen"       {:country/id "D"   :city/name "Munich"}
+    "nurnberg"      {:country/id "D"   :city/name "Nürnberg"}
+    "osnabruck"     {:country/id "D"   :city/name "Osnabrück"}
+    "rostock"       {:country/id "D"   :city/name "Rostock"}
+    "stuttgart"     {:country/id "D"   :city/name "Stuttgart"}
+    "travemunde"    {:country/id "D"   :city/name "Travemünde"}
 
-   ; Portugal (P, 12 cities)
-   "beja"          {:c "P"   :name "Beja"}
-   "coimbra"       {:c "P"   :name "Coimbra"}
-   "corticadas"    {:c "P"   :name "Cortiçadas de Lavre"}
-   "evora"         {:c "P"   :name "Évora"}
-   "faro"          {:c "P"   :name "Faro"}
-   "guarda"        {:c "P"   :name "Guarda"}
-   "lisboa"        {:c "P"   :name "Lisboa"}
-   "olhao"         {:c "P"   :name "Olhão"}
-   "ponte_de_sor"  {:c "P"   :name "Ponte de Sor"}
-   "porto"         {:c "P"   :name "Porto"}
-   "setubal"       {:c "P"   :name "Setúbal"}
-   "sines"         {:c "P"   :name "Sines"}
+    ; Portugal (P, 12 cities)
+    "beja"          {:country/id "P"   :city/name "Beja"}
+    "coimbra"       {:country/id "P"   :city/name "Coimbra"}
+    "corticadas"    {:country/id "P"   :city/name "Cortiçadas de Lavre"}
+    "evora"         {:country/id "P"   :city/name "Évora"}
+    "faro"          {:country/id "P"   :city/name "Faro"}
+    "guarda"        {:country/id "P"   :city/name "Guarda"}
+    "lisboa"        {:country/id "P"   :city/name "Lisboa"}
+    "olhao"         {:country/id "P"   :city/name "Olhão"}
+    "ponte_de_sor"  {:country/id "P"   :city/name "Ponte de Sor"}
+    "porto"         {:country/id "P"   :city/name "Porto"}
+    "setubal"       {:country/id "P"   :city/name "Setúbal"}
+    "sines"         {:country/id "P"   :city/name "Sines"}
 
-   ; Bulgaria (BG, 11 cities)
-   "burgas"        {:c "BG"  :name "Burgas"}
-   "karlovo"       {:c "BG"  :name "Karlovo"}
-   "kozloduy"      {:c "BG"  :name "Kozloduy"}
-   "pernik"        {:c "BG"  :name "Pernik"}
-   "pirdop"        {:c "BG"  :name "Pirdop"}
-   "pleven"        {:c "BG"  :name "Pleven"}
-   "plovdiv"       {:c "BG"  :name "Plovdiv"}
-   "ruse"          {:c "BG"  :name "Ruse"}
-   "sofia"         {:c "BG"  :name "Sofia"}
-   "varna"         {:c "BG"  :name "Varna"}
-   "veli_tarnovo"  {:c "BG"  :name "Veliko Tarnovo"}
+    ; Bulgaria (BG, 11 cities)
+    "burgas"        {:country/id "BG"  :city/name "Burgas"}
+    "karlovo"       {:country/id "BG"  :city/name "Karlovo"}
+    "kozloduy"      {:country/id "BG"  :city/name "Kozloduy"}
+    "pernik"        {:country/id "BG"  :city/name "Pernik"}
+    "pirdop"        {:country/id "BG"  :city/name "Pirdop"}
+    "pleven"        {:country/id "BG"  :city/name "Pleven"}
+    "plovdiv"       {:country/id "BG"  :city/name "Plovdiv"}
+    "ruse"          {:country/id "BG"  :city/name "Ruse"}
+    "sofia"         {:country/id "BG"  :city/name "Sofia"}
+    "varna"         {:country/id "BG"  :city/name "Varna"}
+    "veli_tarnovo"  {:country/id "BG"  :city/name "Veliko Tarnovo"}
 
-   ; Finland (FI, 10 cities)
-   "helsinki"      {:c "FI"  :name "Helsinki"}
-   "kotka"         {:c "FI"  :name "Kotka"}
-   "kouvola"       {:c "FI"  :name "Kouvola"}
-   "lahti"         {:c "FI"  :name "Lahti"}
-   "loviisa"       {:c "FI"  :name "Loviisa"}
-   "naantali"      {:c "FI"  :name "Naantalli"}
-   "olkiluoto"     {:c "FI"  :name "Olkiluoto"}
-   "pori"          {:c "FI"  :name "Pori"}
-   "tampere"       {:c "FI"  :name "Tampere"}
-   "turku"         {:c "FI"  :name "Turku"}
+    ; Finland (FI, 10 cities)
+    "helsinki"      {:country/id "FI"  :city/name "Helsinki"}
+    "kotka"         {:country/id "FI"  :city/name "Kotka"}
+    "kouvola"       {:country/id "FI"  :city/name "Kouvola"}
+    "lahti"         {:country/id "FI"  :city/name "Lahti"}
+    "loviisa"       {:country/id "FI"  :city/name "Loviisa"}
+    "naantali"      {:country/id "FI"  :city/name "Naantalli"}
+    "olkiluoto"     {:country/id "FI"  :city/name "Olkiluoto"}
+    "pori"          {:country/id "FI"  :city/name "Pori"}
+    "tampere"       {:country/id "FI"  :city/name "Tampere"}
+    "turku"         {:country/id "FI"  :city/name "Turku"}
 
-   ; United Kingdom (GB, 20 cities)
-   "aberdeen"      {:c "GB"  :name "Aberdeen"}
-   "birmingham"    {:c "GB"  :name "Birmingham"}
-   "cambridge"     {:c "GB"  :name "Cambridge"}
-   "cardiff"       {:c "GB"  :name "Cardiff"}
-   "carlisle"      {:c "GB"  :name "Carlisle"}
-   "dover"         {:c "GB"  :name "Dover"}
-   "edinburgh"     {:c "GB"  :name "Edinburgh"}
-   "felixstowe"    {:c "GB"  :name "Felixstowe"}
-   "glasgow"       {:c "GB"  :name "Glasgow"}
-   "grimsby"       {:c "GB"  :name "Grimsby"}
-   "harwich"       {:c "GB"  :name "Harwich"}
-   "hull"          {:c "GB"  :name "Hull"}
-   "liverpool"     {:c "GB"  :name "Liverpool"}
-   "london"        {:c "GB"  :name "London"}
-   "manchester"    {:c "GB"  :name "Manchester"}
-   "newcastle"     {:c "GB"  :name "Newcastle"}
-   "plymouth"      {:c "GB"  :name "Plymouth"}
-   "sheffield"     {:c "GB"  :name "Sheffield"}
-   "southampton"   {:c "GB"  :name "Southampton"}
-   "swansea"       {:c "GB"  :name "Swansea"}
+    ; United Kingdom (GB, 20 cities)
+    "aberdeen"      {:country/id "GB"  :city/name "Aberdeen"}
+    "birmingham"    {:country/id "GB"  :city/name "Birmingham"}
+    "cambridge"     {:country/id "GB"  :city/name "Cambridge"}
+    "cardiff"       {:country/id "GB"  :city/name "Cardiff"}
+    "carlisle"      {:country/id "GB"  :city/name "Carlisle"}
+    "dover"         {:country/id "GB"  :city/name "Dover"}
+    "edinburgh"     {:country/id "GB"  :city/name "Edinburgh"}
+    "felixstowe"    {:country/id "GB"  :city/name "Felixstowe"}
+    "glasgow"       {:country/id "GB"  :city/name "Glasgow"}
+    "grimsby"       {:country/id "GB"  :city/name "Grimsby"}
+    "harwich"       {:country/id "GB"  :city/name "Harwich"}
+    "hull"          {:country/id "GB"  :city/name "Hull"}
+    "liverpool"     {:country/id "GB"  :city/name "Liverpool"}
+    "london"        {:country/id "GB"  :city/name "London"}
+    "manchester"    {:country/id "GB"  :city/name "Manchester"}
+    "newcastle"     {:country/id "GB"  :city/name "Newcastle"}
+    "plymouth"      {:country/id "GB"  :city/name "Plymouth"}
+    "sheffield"     {:country/id "GB"  :city/name "Sheffield"}
+    "southampton"   {:country/id "GB"  :city/name "Southampton"}
+    "swansea"       {:country/id "GB"  :city/name "Swansea"}
 
-   ; France (F, 36 cities (wiki is out of date...))
-   "ajaccio"       {:c "F"   :name "Ajaccio"}
-   "alban"         {:c "F"   :name "Saint-Alban-du-Rhône"}
-   "bastia"        {:c "F"   :name "Bastia"}
-   "bayonne"       {:c "F"   :name "Bayonne"}
-   "bonifacio"     {:c "F"   :name "Bonifacio"}
-   "bordeaux"      {:c "F"   :name "Bordeaux"}
-   "bourges"       {:c "F"   :name "Bourges"}
-   "brest"         {:c "F"   :name "Brest"}
-   "calais"        {:c "F"   :name "Calais"}
-   "calvi"         {:c "F"   :name "Calvi"}
-   "civaux"        {:c "F"   :name "Civaux"}
-   "clermont"      {:c "F"   :name "Clermont-Ferrand"}
-   "dijon"         {:c "F"   :name "Dijon"}
-   "golfech"       {:c "F"   :name "Golfech"}
-   "lacq"          {:c "F"   :name "Lacq"}
-   "larochelle"    {:c "F"   :name "La Rochelle"}
-   "laurent"       {:c "F"   :name "Saint-Laurent"}
-   "lehavre"       {:c "F"   :name "Le Havre"}
-   "lemans"        {:c "F"   :name "Le Mans"}
-   "lile_rousse"   {:c "F"   :name "L'Île-Rousse"}
-   "lille"         {:c "F"   :name "Lille"}
-   "limoges"       {:c "F"   :name "Limoges"}
-   "lyon"          {:c "F"   :name "Lyon"}
-   "marseille"     {:c "F"   :name "Marseille"}
-   "metz"          {:c "F"   :name "Metz"}
-   "montpellier"   {:c "F"   :name "Montpellier"}
-   "nantes"        {:c "F"   :name "Nantes"}
-   "nice"          {:c "F"   :name "Nice"}
-   "paluel"        {:c "F"   :name "Paluel"}
-   "paris"         {:c "F"   :name "Paris"}
-   "porto_vecchi"  {:c "F"   :name "Porto-Vecchio"}
-   "reims"         {:c "F"   :name "Reims"}
-   "rennes"        {:c "F"   :name "Rennes"}
-   "roscoff"       {:c "F"   :name "Roscoff"}
-   "strasbourg"    {:c "F"   :name "Strasbourg"}
-   "toulouse"      {:c "F"   :name "Toulouse"}
+    ; France (F, 36 cities (wiki is out of date...))
+    "ajaccio"       {:country/id "F"   :city/name "Ajaccio"}
+    "alban"         {:country/id "F"   :city/name "Saint-Alban-du-Rhône"}
+    "bastia"        {:country/id "F"   :city/name "Bastia"}
+    "bayonne"       {:country/id "F"   :city/name "Bayonne"}
+    "bonifacio"     {:country/id "F"   :city/name "Bonifacio"}
+    "bordeaux"      {:country/id "F"   :city/name "Bordeaux"}
+    "bourges"       {:country/id "F"   :city/name "Bourges"}
+    "brest"         {:country/id "F"   :city/name "Brest"}
+    "calais"        {:country/id "F"   :city/name "Calais"}
+    "calvi"         {:country/id "F"   :city/name "Calvi"}
+    "civaux"        {:country/id "F"   :city/name "Civaux"}
+    "clermont"      {:country/id "F"   :city/name "Clermont-Ferrand"}
+    "dijon"         {:country/id "F"   :city/name "Dijon"}
+    "golfech"       {:country/id "F"   :city/name "Golfech"}
+    "lacq"          {:country/id "F"   :city/name "Lacq"}
+    "larochelle"    {:country/id "F"   :city/name "La Rochelle"}
+    "laurent"       {:country/id "F"   :city/name "Saint-Laurent"}
+    "lehavre"       {:country/id "F"   :city/name "Le Havre"}
+    "lemans"        {:country/id "F"   :city/name "Le Mans"}
+    "lile_rousse"   {:country/id "F"   :city/name "L'Île-Rousse"}
+    "lille"         {:country/id "F"   :city/name "Lille"}
+    "limoges"       {:country/id "F"   :city/name "Limoges"}
+    "lyon"          {:country/id "F"   :city/name "Lyon"}
+    "marseille"     {:country/id "F"   :city/name "Marseille"}
+    "metz"          {:country/id "F"   :city/name "Metz"}
+    "montpellier"   {:country/id "F"   :city/name "Montpellier"}
+    "nantes"        {:country/id "F"   :city/name "Nantes"}
+    "nice"          {:country/id "F"   :city/name "Nice"}
+    "paluel"        {:country/id "F"   :city/name "Paluel"}
+    "paris"         {:country/id "F"   :city/name "Paris"}
+    "porto_vecchi"  {:country/id "F"   :city/name "Porto-Vecchio"}
+    "reims"         {:country/id "F"   :city/name "Reims"}
+    "rennes"        {:country/id "F"   :city/name "Rennes"}
+    "roscoff"       {:country/id "F"   :city/name "Roscoff"}
+    "strasbourg"    {:country/id "F"   :city/name "Strasbourg"}
+    "toulouse"      {:country/id "F"   :city/name "Toulouse"}
 
-   ; Estonia (EST, 6 cities)
-   "kunda"         {:c "EST" :name "Kunda"}
-   "narva"         {:c "EST" :name "Narva"}
-   "paldiski"      {:c "EST" :name "Paldiski"}
-   "parnu"         {:c "EST" :name "Pärnu"}
-   "tallinn"       {:c "EST" :name "Tallinn"}
-   "tartu"         {:c "EST" :name "Tartu"}
+    ; Estonia (EST, 6 cities)
+    "kunda"         {:country/id "EST" :city/name "Kunda"}
+    "narva"         {:country/id "EST" :city/name "Narva"}
+    "paldiski"      {:country/id "EST" :city/name "Paldiski"}
+    "parnu"         {:country/id "EST" :city/name "Pärnu"}
+    "tallinn"       {:country/id "EST" :city/name "Tallinn"}
+    "tartu"         {:country/id "EST" :city/name "Tartu"}
 
-   ; Latvia (LV, 6 cities)
-   "daugavpils"    {:c "LV"  :name "Daugavpils"}
-   "liepaja"       {:c "LV"  :name "Liepāja"}
-   "rezekne"       {:c "LV"  :name "Rēzekne"}
-   "riga"          {:c "LV"  :name "Rīga"}
-   "valmiera"      {:c "LV"  :name "Valmiera"}
-   "ventspils"     {:c "LV"  :name "Ventspils"}
+    ; Latvia (LV, 6 cities)
+    "daugavpils"    {:country/id "LV"  :city/name "Daugavpils"}
+    "liepaja"       {:country/id "LV"  :city/name "Liepāja"}
+    "rezekne"       {:country/id "LV"  :city/name "Rēzekne"}
+    "riga"          {:country/id "LV"  :city/name "Rīga"}
+    "valmiera"      {:country/id "LV"  :city/name "Valmiera"}
+    "ventspils"     {:country/id "LV"  :city/name "Ventspils"}
 
-   ; Lithuania (LT, 7 cities)
-   "kaunas"        {:c "LT"  :name "Kaunas"}
-   "klaipeda"      {:c "LT"  :name "Klaipėda"}
-   "mazeikiai"     {:c "LT"  :name "Mažeikiai"}
-   "panevezys"     {:c "LT"  :name "Panevėžys"}
-   "siauliai"      {:c "LT"  :name "Šiauliai"}
-   "utena"         {:c "LT"  :name "Utena"}
-   "vilnius"       {:c "LT"  :name "Vilnius"}
+    ; Lithuania (LT, 7 cities)
+    "kaunas"        {:country/id "LT"  :city/name "Kaunas"}
+    "klaipeda"      {:country/id "LT"  :city/name "Klaipėda"}
+    "mazeikiai"     {:country/id "LT"  :city/name "Mažeikiai"}
+    "panevezys"     {:country/id "LT"  :city/name "Panevėžys"}
+    "siauliai"      {:country/id "LT"  :city/name "Šiauliai"}
+    "utena"         {:country/id "LT"  :city/name "Utena"}
+    "vilnius"       {:country/id "LT"  :city/name "Vilnius"}
 
-   ; Sweden (S, 16 cities)
-   "goteborg"      {:c "S"   :name "Göteborg"}
-   "helsingborg"   {:c "S"   :name "Helsingborg"}
-   "jonkoping"     {:c "S"   :name "Jönköping"}
-   "kalmar"        {:c "S"   :name "Kalmar"}
-   "kapellskar"    {:c "S"   :name "Kapellskär"}
-   "karlskrona"    {:c "S"   :name "Karlskrona"}
-   "linkoping"     {:c "S"   :name "Linköping"}
-   "malmo"         {:c "S"   :name "Malmö"}
-   "nynashamn"     {:c "S"   :name "Nynäshamn"}
-   "orebro"        {:c "S"   :name "Orebro"}
-   "sodertalje"    {:c "S"   :name "Södertälje"}
-   "stockholm"     {:c "S"   :name "Stockholm"}
-   "trelleborg"    {:c "S"   :name "Trelleborg"}
-   "uppsala"       {:c "S"   :name "Uppsala"}
-   "vasteraas"     {:c "S"   :name "Västerås"}
-   "vaxjo"         {:c "S"   :name "Växjö"}
+    ; Sweden (S, 16 cities)
+    "goteborg"      {:country/id "S"   :city/name "Göteborg"}
+    "helsingborg"   {:country/id "S"   :city/name "Helsingborg"}
+    "jonkoping"     {:country/id "S"   :city/name "Jönköping"}
+    "kalmar"        {:country/id "S"   :city/name "Kalmar"}
+    "kapellskar"    {:country/id "S"   :city/name "Kapellskär"}
+    "karlskrona"    {:country/id "S"   :city/name "Karlskrona"}
+    "linkoping"     {:country/id "S"   :city/name "Linköping"}
+    "malmo"         {:country/id "S"   :city/name "Malmö"}
+    "nynashamn"     {:country/id "S"   :city/name "Nynäshamn"}
+    "orebro"        {:country/id "S"   :city/name "Orebro"}
+    "sodertalje"    {:country/id "S"   :city/name "Södertälje"}
+    "stockholm"     {:country/id "S"   :city/name "Stockholm"}
+    "trelleborg"    {:country/id "S"   :city/name "Trelleborg"}
+    "uppsala"       {:country/id "S"   :city/name "Uppsala"}
+    "vasteraas"     {:country/id "S"   :city/name "Västerås"}
+    "vaxjo"         {:country/id "S"   :city/name "Växjö"}
 
-   ; Denmark (DK, 7 cities)
-   "aalborg"       {:c "DK"  :name "Aalborg"}
-   "esbjerg"       {:c "DK"  :name "Esbjerg"}
-   "frederikshv"   {:c "DK"   :name "Frederikshavn"}
-   "gedser"        {:c "DK"  :name "Gedser"}
-   "hirtshals"     {:c "DK"  :name "Hirtshals"}
-   "kobenhavn"     {:c "DK"  :name "København"}
-   "odense"        {:c "DK"  :name "Odense"}
+    ; Denmark (DK, 7 cities)
+    "aalborg"       {:country/id "DK"  :city/name "Aalborg"}
+    "esbjerg"       {:country/id "DK"  :city/name "Esbjerg"}
+    "frederikshv"   {:country/id "DK"  :city/name "Frederikshavn"}
+    "gedser"        {:country/id "DK"  :city/name "Gedser"}
+    "hirtshals"     {:country/id "DK"  :city/name "Hirtshals"}
+    "kobenhavn"     {:country/id "DK"  :city/name "København"}
+    "odense"        {:country/id "DK"  :city/name "Odense"}
 
-   ; Norway (N, 4 cities)
-   "bergen"        {:c "N"   :name "Bergen"}
-   "kristiansand"  {:c "N"   :name "Kritiansand"}
-   "oslo"          {:c "N"   :name "Oslo"}
-   "stavanger"     {:c "N"   :name "Stavanger"}
+    ; Norway (N, 4 cities)
+    "bergen"        {:country/id "N"   :city/name "Bergen"}
+    "kristiansand"  {:country/id "N"   :city/name "Kritiansand"}
+    "oslo"          {:country/id "N"   :city/name "Oslo"}
+    "stavanger"     {:country/id "N"   :city/name "Stavanger"}
 
-   ; Poland (PL, 11 cities)
-   "bialystok"     {:c "PL"  :name "Białystok"}
-   "gdansk"        {:c "PL"  :name "Gdańsk"}
-   "katowice"      {:c "PL"  :name "Katowice"}
-   "krakow"        {:c "PL"  :name "Kraków"}
-   "lodz"          {:c "PL"  :name "Łódź"}
-   "lublin"        {:c "PL"  :name "Lublin"}
-   "olsztyn"       {:c "PL"  :name "Olsztyn"}
-   "poznan"        {:c "PL"  :name "Poznań"}
-   "szczecin"      {:c "PL"  :name "Szczecin"}
-   "warszawa"      {:c "PL"  :name "Warszawa"}
-   "wroclaw"       {:c "PL"  :name "Wrocław"}
+    ; Poland (PL, 11 cities)
+    "bialystok"     {:country/id "PL"  :city/name "Białystok"}
+    "gdansk"        {:country/id "PL"  :city/name "Gdańsk"}
+    "katowice"      {:country/id "PL"  :city/name "Katowice"}
+    "krakow"        {:country/id "PL"  :city/name "Kraków"}
+    "lodz"          {:country/id "PL"  :city/name "Łódź"}
+    "lublin"        {:country/id "PL"  :city/name "Lublin"}
+    "olsztyn"       {:country/id "PL"  :city/name "Olsztyn"}
+    "poznan"        {:country/id "PL"  :city/name "Poznań"}
+    "szczecin"      {:country/id "PL"  :city/name "Szczecin"}
+    "warszawa"      {:country/id "PL"  :city/name "Warszawa"}
+    "wroclaw"       {:country/id "PL"  :city/name "Wrocław"}
 
-   ; Belgium (B, 2 cities)
-   "brussel"       {:c "B"   :name "Brussel"}
-   "liege"         {:c "B"   :name "Liège"}
+    ; Belgium (B, 2 cities)
+    "brussel"       {:country/id "B"   :city/name "Brussel"}
+    "liege"         {:country/id "B"   :city/name "Liège"}
 
-   ; Netherlands (NL, 3 cities + 2 port towns)
-   "rotterdam"     {:c "NL"  :name "Rotterdam"}
-   "groningen"     {:c "NL"  :name "Groningen"}
-   "amsterdam"     {:c "NL"  :name "Amsterdam"}
+    ; Netherlands (NL, 3 cities + 2 port towns)
+    "rotterdam"     {:country/id "NL"  :city/name "Rotterdam"}
+    "groningen"     {:country/id "NL"  :city/name "Groningen"}
+    "amsterdam"     {:country/id "NL"  :city/name "Amsterdam"}
 
-   ; Austria (A, 6 cities)
-   "graz"          {:c "A"   :name "Graz"}
-   "innsbruck"     {:c "A"   :name "Innsbruck"}
-   "klagenfurt"    {:c "A"   :name "Klagenfurt"}
-   "linz"          {:c "A"   :name "Linz"}
-   "salzburg"      {:c "A"   :name "Salzburg"}
-   "wien"          {:c "A"   :name "Wien"}
+    ; Austria (A, 6 cities)
+    "graz"          {:country/id "A"   :city/name "Graz"}
+    "innsbruck"     {:country/id "A"   :city/name "Innsbruck"}
+    "klagenfurt"    {:country/id "A"   :city/name "Klagenfurt"}
+    "linz"          {:country/id "A"   :city/name "Linz"}
+    "salzburg"      {:country/id "A"   :city/name "Salzburg"}
+    "wien"          {:country/id "A"   :city/name "Wien"}
 
-   ; Czechia (CZ, 3 cities)
-   "brno"          {:c "CZ"  :name "Brno"}
-   "ostrava"       {:c "CZ"  :name "Ostrava"}
-   "prague"        {:c "CZ"  :name "Praha"}
+    ; Czechia (CZ, 3 cities)
+    "brno"          {:country/id "CZ"  :city/name "Brno"}
+    "ostrava"       {:country/id "CZ"  :city/name "Ostrava"}
+    "prague"        {:country/id "CZ"  :city/name "Praha"}
 
-   ; Slovakia (SK, 3 cities)
-   "bratislava"    {:c "SK"  :name "Bratislava"}
-   "bystrica"      {:c "SK"  :name "Banská Bystrica"}
-   "kosice"        {:c "SK"  :name "Kosice"}
+    ; Slovakia (SK, 3 cities)
+    "bratislava"    {:country/id "SK"  :city/name "Bratislava"}
+    "bystrica"      {:country/id "SK"  :city/name "Banská Bystrica"}
+    "kosice"        {:country/id "SK"  :city/name "Kosice"}
 
-   ; Hungary (H, 4 cities)
-   "budapest"      {:c "H"   :name "Budapest"}
-   "debrecen"      {:c "H"   :name "Debrecen"}
-   "pecs"          {:c "H"   :name "Pécs"}
-   "szeged"        {:c "H"   :name "Szeged"}
+    ; Hungary (H, 4 cities)
+    "budapest"      {:country/id "H"   :city/name "Budapest"}
+    "debrecen"      {:country/id "H"   :city/name "Debrecen"}
+    "pecs"          {:country/id "H"   :city/name "Pécs"}
+    "szeged"        {:country/id "H"   :city/name "Szeged"}
 
-   ; Turkey (TR, 3 cities)
-   "edirne"        {:c "TR"  :name "Edirne"}
-   "istanbul"      {:c "TR"  :name "İstanbul"}
-   "tekirdag"      {:c "TR"  :name "Tekirdağ"}
+    ; Turkey (TR, 3 cities)
+    "edirne"        {:country/id "TR"  :city/name "Edirne"}
+    "istanbul"      {:country/id "TR"  :city/name "İstanbul"}
+    "tekirdag"      {:country/id "TR"  :city/name "Tekirdağ"}
 
-   ; Switzerland (CH, 3 cities)
-   "bern"          {:c "CH"  :name "Bern"}
-   "geneve"        {:c "CH"  :name "Genève"}
-   "zurich"        {:c "CH"  :name "Zurich"}
+    ; Switzerland (CH, 3 cities)
+    "bern"          {:country/id "CH"  :city/name "Bern"}
+    "geneve"        {:country/id "CH"  :city/name "Genève"}
+    "zurich"        {:country/id "CH"  :city/name "Zurich"}
 
-   ; Luxembourg (L, 1 city)
-   "luxembourg"    {:c "L"   :name "Luxembourg"}
+    ; Luxembourg (L, 1 city)
+    "luxembourg"    {:country/id "L"   :city/name "Luxembourg"}
 
-   ; Russia (RU, 6 cities)
-   "kaliningrad"   {:c "RU"  :name "Kaliningrad"}
-   "luga"          {:c "RU"  :name "Luga"}
-   "petersburg"    {:c "RU"  :name "St. Petersburg"}
-   "pskov"         {:c "RU"  :name "Pskov"}
-   "sosnovy_bor"   {:c "RU"  :name "Sosnovy Bor"}
-   "vyborg"        {:c "RU"  :name "Vyborg"}
-   })
+    ; Russia (RU, 6 cities)
+    "kaliningrad"   {:country/id "RU"  :city/name "Kaliningrad"}
+    "luga"          {:country/id "RU"  :city/name "Luga"}
+    "petersburg"    {:country/id "RU"  :city/name "St. Petersburg"}
+    "pskov"         {:country/id "RU"  :city/name "Pskov"}
+    "sosnovy_bor"   {:country/id "RU"  :city/name "Sosnovy Bor"}
+    "vyborg"        {:country/id "RU"  :city/name "Vyborg"}}))
 
-(defn human-name
+(pco/defresolver city-human-name
   "Given the machine-readable slug (eg. 'laurent') returns the human-readable
   name with country abbreviation, like in the game (eg. 'Saint-Laurent (F)').
-  If the slug is unknown (the list above is ad hoc and might have missed some)
+
+  If the slug is unknown (the table of cities is ad hoc and might have missed some)
   it returns 'slug (??)'."
-  [slug]
-  (let [{:keys [c name]} (cities slug)]
-    {:city    (or name slug)
-     :flag    (flags c)
-     :country (or c "???")}))
+  [{city-name :city/name
+    country   :country/id
+    slug      :city/id}]
+  {::pco/input [:city/id (pco/? :city/name) (pco/? :country/id)]}
+  {:city/human-name   (or city-name slug)
+   :city/country-code (or country "???")})
 
+(def ^:private company-names
+  (pbir/static-attribute-map-resolver
+   :company/id :company/name
+   {"aaa"            "AA - Auto di Alonso"
+    "acc"            "ACC"
+    "aci"            "ACI SRL"
+    "aerobalt"       "Aerobaltica"
+    "aerobalt_ru"    "АэроБалтика"
+    "agregados"      "Agregados"
+    "agrominta"      "Agrominta UAB"
+    "agrominta_a"    "Agrominta UAB"
+    "agronord"       "Agronord"
+    "app"            "APP"
+    "aria_fd_albg"   "ARIA Food"
+    "aria_fd_esbj"   "ARIA Food"
+    "aria_fd_jnpg"   "ARIA Food"
+    "aria_fd_trbg"   "ARIA Food"
+    "ateria"         "Ateria AS"
+    "balkan_loco"    "Balkan Loco"
+    "baltomors_ru"   "Балтоморск"
+    "baltomorsk"     "Baltomorsk"
+    "baltrak"        "Baltrak Lojistik"
+    "batisse_base"   "Bâtisse"
+    "batisse_hs"     "Bâtisse"
+    "batisse_road"   "Bâtisse"
+    "batisse_wind"   "Bâtisse"
+    "bcp"            "BCP"
+    "bhb_raffin"     "BHB La Raffinerie"
+    "bhv"            "BHV"
+    "bjork"          "Björk"
+    "blt"            "BLT - Baltic Logistic Transport"
+    "blt_ru"         "Балтийский Логистический Транспорт"
+    "blt_yacht"      "BLT - Baltic Logistic Transport"
+    "bltmetal"       "Baltic Metallurgy"
+    "bltmetal_ru"    "Балтийская Металлургия"
+    "boisserie"      "Boisserie Jean-Pierre"
+    "brawen"         "Brawen Transport"
+    "c_navale"       "Cantiere Navale"
+    "cantera"        "Cantera Ibérica"
+    "canteras_ds"    "Canteras del Sur"
+    "cargotras"      "Cargotras"
+    "casa_olivera"   "Casa Olivera"
+    "cemelt_bas"     "Cemeltex"
+    "cemelt_fl_ru"   "Цемелтекс"
+    "cemelt_fla"     "Cemeltex"
+    "cemelt_hal"     "Cemeltex"
+    "cemelt_win"     "Cemeltex"
+    "cesare_smar"    "Cesare Supermercato"
+    "cesta_sl"       "Cesta"
+    "cgla"           "CGLA"
+    "chimi"          "Chimi"
+    "cnp"            "CNP"
+    "comoto"         "Comoto"
+    "cont_port"      "Container Port"
+    "cont_port_fr"   "Port de Conteneur"
+    "cont_port_it"   "Terminal Container"
+    "cont_port_ru"   "Контейнерный Пункт"
+    "cortica"        "Cortiça Prima"
+    "costruzi_bas"   "CDE SRL"
+    "costruzi_fla"   "CDE SRL"
+    "costruzi_hal"   "CDE SRL"
+    "costruzi_win"   "CDE SRL"
+    "dans_jardin"    "Dans le Jardin"
+    "dobr_ferm_bg"   "Dobra Ferma"
+    "domdepo"        "Domdepo"
+    "domdepo_ru"     "Домдепо"
+    "drekkar"        "Drekkar Trans"
+    "dulcis"         "Dulcis"
+    "ee_paper"       "Estonian Paper AS"
+    "egres"          "Maatila Egres"
+    "elcano_fla"     "COnstrucciones Elcano"
+    "engeron"        "Engeron"
+    "eolo_lines"     "Eolo Lines"
+    "eppa"           "EPPA"
+    "euroacres"      "eAcres"
+    "eurogoodies"    "EuroGoodies"
+    "eviksi"         "Evikši ZS"
+    "eviksi_a"       "Evikši ZS"
+    "exomar"         "Exomar"
+    "fallow"         "Fallow Cargo"
+    "fattoria_f"     "Fattoria Felice"
+    "fcp"            "FCP"
+    "fintyre"        "Finnish Tyres"
+    "fintyre_ru"     "Финские Шины"
+    "fle"            "FLE"
+    "fui"            "FUISpA"
+    "gallia_ferry"   "Gallia Ferries"
+    "globeur"        "Globeur"
+    "gnt"            "GNT"
+    "gomme_monde"    "Gomme du Monde"
+    "huerta"         "Huerta del Mar Menor"
+    "huilant"        "Huilant"
+    "iberatomica"    "Iberatómica"
+    "ibp"            "IBP"
+    "ika_bohag"      "IKA Bohag"
+    "ika_ru"         "ИКА Мебель"
+    "imp_otel"       "Oțel Impecabil"
+    "itcc"           "ITCC"
+    "kaarfor"        "Kaarfor"
+    "kamen_ru"       "Старый Камень"
+    "kivi"           "Vanha Kivi"
+    "kolico"         "Kolico"
+    "konstnr"        "Konstnorr"
+    "konstnr_br"     "Konstnorr"
+    "konstnr_hs"     "Konstnorr"
+    "konstnr_wind"   "Konstnorr"
+    "ladoga"         "Ladoga Auto"
+    "ladoga_ru"      "Ладога Авто"
+    "lateds"         "Lateds AS"
+    "lavish_food"    "Lavish Foods"
+    "libellula"      "Libellula"
+    "lintukainen"    "Lindakäinen"
+    "lisette_log"    "Lisette Logistics"
+    "lkwlog"         "LKW"
+    "log_atlan"      "Logística Atlântica"
+    "lognstick"      "Log n Stick"
+    "low_field"      "Low Field"
+    "lvr"            "LVR - Latvijas Vagonu Rūpnīca"
+    "marina"         "Marina (yacht)"
+    "marina_fr"      "Marina (anchor)"
+    "marina_it"      "Marina (crown)"
+    "marmo"          "Marmo SpA"
+    "ms_stein"       "MS Stein"
+    "mvm_carriere"   "MVM Carrière"
+    "nbfc"           "NBFC"
+    "nch"            "NCH"
+    "nch_ru"         "НКХ"
+    "nord_crown"     "Nordic Crown"
+    "nord_sten"      "Nordic Stenbrott"
+    "norr_food"      "Norrfood"
+    "norrsken"       "Norrsken"
+    "nos_pat_brg"    "Nos Pâturages"
+    "nos_pat_cf"     "Nos Pâturages"
+    "nos_pat_lhv"    "Nos Pâturages"
+    "nosko"          "Noskonitta"
+    "ns_chem"        "NS Chemicals"
+    "ns_chem_ru"     "НС Химия"
+    "ns_oil"         "NS Oil"
+    "ns_oil_ru"      "НС Ойл"
+    "nucleon"        "Nucléon"
+    "ocean_sol"      "Ocean Solution Group"
+    "onnelik"        "Õnnelik Talu"
+    "onnelik_a"      "Õnnelik Talu"
+    "ortiz"          "Ortiz"
+    "piac"           "PIAC"
+    "pk_medved_ru"   "ПК Meдвeдь"
+    "polar_fish"     "Polar Fish"
+    "polarislines"   "Polaris Lines"
+    "posped"         "Posped"
+    "pp_chimica"     "PP Chimica Italia SRL"
+    "quadrelli"      "Quadrelli SpA"
+    "quarry"         "Stein Bruch"
+    "radus"          "Radus"
+    "radus_ru"       "Радус"
+    "renar"          "Renar Logistik"
+    "renat"          "Renat"
+    "rimaf"          "Rimaf"
+    "rock_eater"     "Rock Eater Quarry"
+    "rosmark"        "Rosmark"
+    "rosmark_ru"     "Росмарк"
+    "rt_log"         "RTLOG"
+    "rump"           "Rump"
+    "sag_tre"        "Sag & Tre"
+    "sal"            "S.A.L. S.R.L."
+    "sal_fi"         "S.A.L. S.R.L."
+    "sanbuilders"    "Sanbuilders"
+    "scania_dlr"     "Scania"
+    "scania_fac"     "Scania"
+    "scs_paper"      "SCS Paper"
+    "sellplan"       "SellPlan"
+    "severoatm_ru"   "Ceвepoaтoм"
+    "skoda"          "Scout"
+    "spinelli"       "Spinelli"
+    "sporklift"      "Sporklift"
+    "st_roza_bg"     "Стоманена Роза"
+    "stokes"         "Stokes"
+    "subse"          "Subse"
+    "supercesta"     "SuperCesta"
+    "suprema"        "Suprema"
+    "suprema_ru"     "Супpeмa"
+    "tdc_auto"       "TDC Auto Terminal"
+    "te_logistica"   "TE Logistica"
+    "tesore_gust"    "Tesoro Gustoso"
+    "timberturtle"   "Timber Turtle"
+    "tm_istanbul"    "TM-Istanbul"
+    "tradeaux"       "Tradeaux"
+    "trainfoundry"   "The Train Foundry"
+    "trameri"        "Trameri"
+    "trans_cab"      "Transportes Caballería"
+    "transinet"      "Transinet"
+    "tras_med"       "Trasporti Mediterraneo"
+    "tree_et"        "TREE-ET"
+    "ts_atlas"       "TS Atlas"
+    "ttk_bg"         "Теодора"
+    "ukko"           "Ukko Voima"
+    "viljo_paper"    "Viljo Paperitehdas Oy"
+    "viln_paper"     "VPF - Vilniaus Popieriaus Fabrikas"
+    "vitas_pwr"      "Vitas Power"
+    "vitas_pwr_co"   "Vitas Power"
+    "voitureux"      "Voitureux"
+    "volvo_fac"      "Volvo"
+    "vpc"            "VPC"
+    "wgcc"           "WGCC"
+    "wilnet_trans"   "Wilnet Transport"
+    "zelenye"        "Зелëные Поля"
+    "zelenye_a"      "Зелëные Поля"}))
 
-(def company-names
-  {
-   "aaa"            "AA - Auto di Alonso"
-   "acc"            "ACC"
-   "aci"            "ACI SRL"
-   "aerobalt"       "Aerobaltica"
-   "aerobalt_ru"    "АэроБалтика"
-   "agregados"      "Agregados"
-   "agrominta"      "Agrominta UAB"
-   "agrominta_a"    "Agrominta UAB"
-   "agronord"       "Agronord"
-   "app"            "APP"
-   "aria_fd_albg"   "ARIA Food"
-   "aria_fd_esbj"   "ARIA Food"
-   "aria_fd_jnpg"   "ARIA Food"
-   "aria_fd_trbg"   "ARIA Food"
-   "ateria"         "Ateria AS"
-   "balkan_loco"    "Balkan Loco"
-   "baltomors_ru"   "Балтоморск"
-   "baltomorsk"     "Baltomorsk"
-   "baltrak"        "Baltrak Lojistik"
-   "batisse_base"   "Bâtisse"
-   "batisse_hs"     "Bâtisse"
-   "batisse_road"   "Bâtisse"
-   "batisse_wind"   "Bâtisse"
-   "bcp"            "BCP"
-   "bhb_raffin"     "BHB La Raffinerie"
-   "bhv"            "BHV"
-   "bjork"          "Björk"
-   "blt"            "BLT - Baltic Logistic Transport"
-   "blt_ru"         "Балтийский Логистический Транспорт"
-   "blt_yacht"      "BLT - Baltic Logistic Transport"
-   "bltmetal"       "Baltic Metallurgy"
-   "bltmetal_ru"    "Балтийская Металлургия"
-   "boisserie"      "Boisserie Jean-Pierre"
-   "brawen"         "Brawen Transport"
-   "c_navale"       "Cantiere Navale"
-   "cantera"        "Cantera Ibérica"
-   "canteras_ds"    "Canteras del Sur"
-   "cargotras"      "Cargotras"
-   "casa_olivera"   "Casa Olivera"
-   "cemelt_bas"     "Cemeltex"
-   "cemelt_fl_ru"   "Цемелтекс"
-   "cemelt_fla"     "Cemeltex"
-   "cemelt_hal"     "Cemeltex"
-   "cemelt_win"     "Cemeltex"
-   "cesare_smar"    "Cesare Supermercato"
-   "cesta_sl"       "Cesta"
-   "cgla"           "CGLA"
-   "chimi"          "Chimi"
-   "cnp"            "CNP"
-   "comoto"         "Comoto"
-   "cont_port"      "Container Port"
-   "cont_port_fr"   "Port de Conteneur"
-   "cont_port_it"   "Terminal Container"
-   "cont_port_ru"   "Контейнерный Пункт"
-   "cortica"        "Cortiça Prima"
-   "costruzi_bas"   "CDE SRL"
-   "costruzi_fla"   "CDE SRL"
-   "costruzi_hal"   "CDE SRL"
-   "costruzi_win"   "CDE SRL"
-   "dans_jardin"    "Dans le Jardin"
-   "dobr_ferm_bg"   "Dobra Ferma"
-   "domdepo"        "Domdepo"
-   "domdepo_ru"     "Домдепо"
-   "drekkar"        "Drekkar Trans"
-   "dulcis"         "Dulcis"
-   "ee_paper"       "Estonian Paper AS"
-   "egres"          "Maatila Egres"
-   "elcano_fla"     "COnstrucciones Elcano"
-   "engeron"        "Engeron"
-   "eolo_lines"     "Eolo Lines"
-   "eppa"           "EPPA"
-   "euroacres"      "eAcres"
-   "eurogoodies"    "EuroGoodies"
-   "eviksi"         "Evikši ZS"
-   "eviksi_a"       "Evikši ZS"
-   "exomar"         "Exomar"
-   "fallow"         "Fallow Cargo"
-   "fattoria_f"     "Fattoria Felice"
-   "fcp"            "FCP"
-   "fintyre"        "Finnish Tyres"
-   "fintyre_ru"     "Финские Шины"
-   "fle"            "FLE"
-   "fui"            "FUISpA"
-   "gallia_ferry"   "Gallia Ferries"
-   "globeur"        "Globeur"
-   "gnt"            "GNT"
-   "gomme_monde"    "Gomme du Monde"
-   "huerta"         "Huerta del Mar Menor"
-   "huilant"        "Huilant"
-   "iberatomica"    "Iberatómica"
-   "ibp"            "IBP"
-   "ika_bohag"      "IKA Bohag"
-   "ika_ru"         "ИКА Мебель"
-   "imp_otel"       "Oțel Impecabil"
-   "itcc"           "ITCC"
-   "kaarfor"        "Kaarfor"
-   "kamen_ru"       "Старый Камень"
-   "kivi"           "Vanha Kivi"
-   "kolico"         "Kolico"
-   "konstnr"        "Konstnorr"
-   "konstnr_br"     "Konstnorr"
-   "konstnr_hs"     "Konstnorr"
-   "konstnr_wind"   "Konstnorr"
-   "ladoga"         "Ladoga Auto"
-   "ladoga_ru"      "Ладога Авто"
-   "lateds"         "Lateds AS"
-   "lavish_food"    "Lavish Foods"
-   "libellula"      "Libellula"
-   "lintukainen"    "Lindakäinen"
-   "lisette_log"    "Lisette Logistics"
-   "lkwlog"         "LKW"
-   "log_atlan"      "Logística Atlântica"
-   "lognstick"      "Log n Stick"
-   "low_field"      "Low Field"
-   "lvr"            "LVR - Latvijas Vagonu Rūpnīca"
-   "marina"         "Marina (yacht)"
-   "marina_fr"      "Marina (anchor)"
-   "marina_it"      "Marina (crown)"
-   "marmo"          "Marmo SpA"
-   "ms_stein"       "MS Stein"
-   "mvm_carriere"   "MVM Carrière"
-   "nbfc"           "NBFC"
-   "nch"            "NCH"
-   "nch_ru"         "НКХ"
-   "nord_crown"     "Nordic Crown"
-   "nord_sten"      "Nordic Stenbrott"
-   "norr_food"      "Norrfood"
-   "norrsken"       "Norrsken"
-   "nos_pat_brg"    "Nos Pâturages"
-   "nos_pat_cf"     "Nos Pâturages"
-   "nos_pat_lhv"    "Nos Pâturages"
-   "nosko"          "Noskonitta"
-   "ns_chem"        "NS Chemicals"
-   "ns_chem_ru"     "НС Химия"
-   "ns_oil"         "NS Oil"
-   "ns_oil_ru"      "НС Ойл"
-   "nucleon"        "Nucléon"
-   "ocean_sol"      "Ocean Solution Group"
-   "onnelik"        "Õnnelik Talu"
-   "onnelik_a"      "Õnnelik Talu"
-   "ortiz"          "Ortiz"
-   "piac"           "PIAC"
-   "pk_medved_ru"   "ПК Meдвeдь"
-   "polar_fish"     "Polar Fish"
-   "polarislines"   "Polaris Lines"
-   "posped"         "Posped"
-   "pp_chimica"     "PP Chimica Italia SRL"
-   "quadrelli"      "Quadrelli SpA"
-   "quarry"         "Stein Bruch"
-   "radus"          "Radus"
-   "radus_ru"       "Радус"
-   "renar"          "Renar Logistik"
-   "renat"          "Renat"
-   "rimaf"          "Rimaf"
-   "rock_eater"     "Rock Eater Quarry"
-   "rosmark"        "Rosmark"
-   "rosmark_ru"     "Росмарк"
-   "rt_log"         "RTLOG"
-   "rump"           "Rump"
-   "sag_tre"        "Sag & Tre"
-   "sal"            "S.A.L. S.R.L."
-   "sal_fi"         "S.A.L. S.R.L."
-   "sanbuilders"    "Sanbuilders"
-   "scania_dlr"     "Scania"
-   "scania_fac"     "Scania"
-   "scs_paper"      "SCS Paper"
-   "sellplan"       "SellPlan"
-   "severoatm_ru"   "Ceвepoaтoм"
-   "skoda"          "Scout"
-   "spinelli"       "Spinelli"
-   "sporklift"      "Sporklift"
-   "st_roza_bg"     "Стоманена Роза"
-   "stokes"         "Stokes"
-   "subse"          "Subse"
-   "supercesta"     "SuperCesta"
-   "suprema"        "Suprema"
-   "suprema_ru"     "Супpeмa"
-   "tdc_auto"       "TDC Auto Terminal"
-   "te_logistica"   "TE Logistica"
-   "tesore_gust"    "Tesoro Gustoso"
-   "timberturtle"   "Timber Turtle"
-   "tm_istanbul"    "TM-Istanbul"
-   "tradeaux"       "Tradeaux"
-   "trainfoundry"   "The Train Foundry"
-   "trameri"        "Trameri"
-   "trans_cab"      "Transportes Caballería"
-   "transinet"      "Transinet"
-   "tras_med"       "Trasporti Mediterraneo"
-   "tree_et"        "TREE-ET"
-   "ts_atlas"       "TS Atlas"
-   "ttk_bg"         "Теодора"
-   "ukko"           "Ukko Voima"
-   "viljo_paper"    "Viljo Paperitehdas Oy"
-   "viln_paper"     "VPF - Vilniaus Popieriaus Fabrikas"
-   "vitas_pwr"      "Vitas Power"
-   "vitas_pwr_co"   "Vitas Power"
-   "voitureux"      "Voitureux"
-   "volvo_fac"      "Volvo"
-   "vpc"            "VPC"
-   "wgcc"           "WGCC"
-   "wilnet_trans"   "Wilnet Transport"
-   "zelenye"        "Зелëные Поля"
-   "zelenye_a"      "Зелëные Поля"
-   })
+(def ^:private cargos
+  (pbir/static-table-resolver :cargo/id
+   {"acetylene"      {:cargo/name "Acetylene" :cargo/adr #{:adr/gases}}
+    "acid"           {:cargo/name "Acid" :cargo/adr #{:adr/corrosive}}
+    "air_mails"      {:cargo/name "Air Mails"}
+    "aircft_tires"   {:cargo/name "Aircraft Tyres"}
+    "aircond"        {:cargo/name "Air Conditioners"}
+    "almond"         {:cargo/name "Almonds"}
+    "ammunition"     {:cargo/name "Ammunition" :cargo/adr #{:adr/explosive}}
+    "apples"         {:cargo/name "Apples"}
+    "apples_c"       {:cargo/name "Apples"}
+    "arsenic"        {:cargo/name "Arsenic" :cargo/adr #{:adr/poison}}
+    "asph_miller"    {:cargo/name "Asphalt Miller"}
+    "atl_cod_flt"    {:cargo/name "Atlantic Cod Fillet"}
+    "backfl_prev"    {:cargo/name "Backflow Preventers"}
+    "barley"         {:cargo/name "Barley"}
+    "basil"          {:cargo/name "Basil"}
+    "beans"          {:cargo/name "Beans"}
+    "beef_meat"      {:cargo/name "Beef"}
+    "beverages"      {:cargo/name "Beverages"}
+    "beverages_c"    {:cargo/name "Beverages"}
+    "beverages_t"    {:cargo/name "Beverages"}
+    "big_bag_seed"   {:cargo/name "Big-Bags of Seeds"}
+    "boric_acid"     {:cargo/name "Boric Acid"}
+    "bottle_water"   {:cargo/name "Bottled Water"}
+    "brake_fluid"    {:cargo/name "Brake Fluid"}
+    "brake_pads"     {:cargo/name "Brake Pads"}
+    "bricks"         {:cargo/name "Bricks"}
+    "cable_reel"     {:cargo/name "Industrial Cable Reel"}
+    "can_sardines"   {:cargo/name "Canned Sardines"}
+    "canned_beans"   {:cargo/name "Canned Beans"}
+    "canned_beef"    {:cargo/name "Canned Beef"}
+    "canned_pork"    {:cargo/name "Canned Pork"}
+    "canned_tuna"    {:cargo/name "Canned Tuna"}
+    "car_balt1"      {:cargo/name "Cars"}
+    "car_balt2"      {:cargo/name "Cars?"}
+    "car_ibe"        {:cargo/name "Cars"}
+    "car_it"         {:cargo/name "Cars"}
+    "carb_water"     {:cargo/name "Carbonated Water"}
+    "carbn_pwdr_c"   {:cargo/name "Carbon Black Powder"}
+    "carrots"        {:cargo/name "Carrots"}
+    "carrots_c"      {:cargo/name "Carrots"}
+    "cars_fr"        {:cargo/name "Cars"}
+    "cauliflower"    {:cargo/name "Cauliflower"}
+    "caviar"         {:cargo/name "Caviar"}
+    "cement"         {:cargo/name "Cement"}
+    "cheese"         {:cargo/name "Cheese"}
+    "chem_sorb_c"    {:cargo/name "Chemical Sorbent"}
+    "chem_sorbent"   {:cargo/name "Chemical Sorbet"}
+    "chemicals"      {:cargo/name "Chemicals" :cargo/adr #{:adr/gases}}
+    "chewing_gums"   {:cargo/name "Chewing Gums"}
+    "chicken_meat"   {:cargo/name "Chicken Meat"}
+    "chimney_syst"   {:cargo/name "Chimney Systems"}
+    "chlorine"       {:cargo/name "Chlorine" :cargo/adr #{:adr/gases}}
+    "chocolate"      {:cargo/name "Chocolate"}
+    "clothes"        {:cargo/name "Clothes"}
+    "clothes_c"      {:cargo/name "Clothes"}
+    "coal"           {:cargo/name "Coal"}
+    "coconut_milk"   {:cargo/name "Coconut Milk"}
+    "coconut_oil"    {:cargo/name "Coconut Oil"}
+    "comp_process"   {:cargo/name "Computer Processors"}
+    "conc_juice_t"   {:cargo/name "Concentrate Juices"}
+    "concen_juice"   {:cargo/name "Concentrate Juices"}
+    "concr_beams"    {:cargo/name "Concrete Beams"}
+    "concr_beams2"   {:cargo/name "Concrete Beams"}
+    "concr_cent"     {:cargo/name "Concrete Centering"}
+    "concr_stair"    {:cargo/name "Concrete Stairs"}
+    "cont_trees"     {:cargo/name "Containerized Trees"}
+    "contamin"       {:cargo/name "Contaminated Material" :cargo/adr #{:adr/poison}}
+    "copp_rf_gutt"   {:cargo/name "Copper Roof Gutters"}
+    "corks"          {:cargo/name "Corks"}
+    "cott_cheese"    {:cargo/name "Cottage Cheese"}
+    "cut_flowers"    {:cargo/name "Cut Flowers"}
+    "cyanide"        {:cargo/name "Cyanide" :cargo/adr #{:adr/poison}}
+    "desinfection"   {:cargo/name "Disinfectant"}
+    "diesel"         {:cargo/name "Diesel" :cargo/adr #{:adr/flammable-liquids}}
+    "diesel_gen"     {:cargo/name "Diesel Generators"}
+    "digger1000"     {:cargo/name "Wheel Loader"}
+    "digger500"      {:cargo/name "Backhoe Loader"}
+    "diggers"        {:cargo/name "Loaders"}
+    "dozer"          {:cargo/name "Dozer Crawl - Z35K"}
+    "driller"        {:cargo/name "Driller - D-50"}
+    "dryers"         {:cargo/name "Dryers"}
+    "drymilk"        {:cargo/name "Dry Milk"}
+    "dynamite"       {:cargo/name "Dynamite" :cargo/adr #{:adr/explosive}}
+    "elect_wiring"   {:cargo/name "Electrical Wiring"}
+    "electronics"    {:cargo/name "Electronics"}
+    "emp_wine_bot"   {:cargo/name "Empty Wine Bottles"}
+    "empty_barr"     {:cargo/name "Empty Barrels"}
+    "empty_palet"    {:cargo/name "Empty Palettes"}
+    "emptytank"      {:cargo/name "Reservoir Tank?"}
+    "excav_soil"     {:cargo/name "Excavated Soil"}
+    "excavator"      {:cargo/name "Excavator"}
+    "exhausts_c"     {:cargo/name "Exhaust Systems"}
+    "explosives"     {:cargo/name "Explosives" :cargo/adr #{:adr/explosive}}
+    "fertilizer"     {:cargo/name "Fertilizer"}
+    "fireworks"      {:cargo/name "Fireworks" :cargo/adr #{:adr/explosive}}
+    "fish_chips"     {:cargo/name "Fish Fingers"}
+    "floorpanels"    {:cargo/name "Floor Panels"}
+    "flour"          {:cargo/name "Flour"}
+    "fluorine"       {:cargo/name "Fluorine" :cargo/adr #{:adr/gases}}
+    "forklifts"      {:cargo/name "Forklifts"}
+    "fresh_fish"     {:cargo/name "Fresh Fish"}
+    "froz_octopi"    {:cargo/name "Frozen Octopi"}
+    "frozen_hake"    {:cargo/name "Frozen Hake"}
+    "frsh_herbs"     {:cargo/name "Fresh Herbs"}
+    "fuel_oil"       {:cargo/name "Fuel Oil" :cargo/adr #{:adr/flammable-liquids}}
+    "fuel_tanks"     {:cargo/name "Fuel Tanks"}
+    "fueltanker"     {:cargo/name "Fuel Tanker" :cargo/adr #{:adr/flammable-liquids}}
+    "furniture"      {:cargo/name "Furniture"}
+    "garlic"         {:cargo/name "Garlic"}
+    "glass"          {:cargo/name "Glass Panels?"}
+    "glass_packed"   {:cargo/name "Packed Glass"}
+    "gnocchi"        {:cargo/name "Gnocchi"}
+    "goat_cheese"    {:cargo/name "Goat Cheese"}
+    "granite_cube"   {:cargo/name "Granite Cube"}
+    "grapes"         {:cargo/name "Grapes"}
+    "graph_grease"   {:cargo/name "Graphite Grease"}
+    "grass_rolls"    {:cargo/name "Grass Rolls"}
+    "gravel"         {:cargo/name "Gravel"}
+    "guard_rails"    {:cargo/name "Guard Rails"}
+    "gummy_bears"    {:cargo/name "Gummy Bears"}
+    "harvest_bins"   {:cargo/name "Harvesting Bins"}
+    "hchemicals"     {:cargo/name "Hot Chemicals" :cargo/adr #{:adr/gases}}
+    "helicopter"     {:cargo/name "Helicopter - 1808TX"}
+    "hi_volt_cabl"   {:cargo/name "High Voltage Cables"}
+    "hipresstank"    {:cargo/name "Pressure Tank"}
+    "hmetal"         {:cargo/name "Heavy Metals" :cargo/adr #{:adr/poison}}
+    "honey"          {:cargo/name "Honey"}
+    "hwaste"         {:cargo/name "Hospital Waste" :cargo/adr #{:adr/poison}}
+    "ibc_cont"       {:cargo/name "IBC Containers"}
+    "icecream"       {:cargo/name "Ice Cream"}
+    "iced_coffee"    {:cargo/name "Canned Iced Coffee"}
+    "iron_pipes"     {:cargo/name "Iron Pipes"}
+    "iveco_vans"     {:cargo/name "Braco Vans"}
+    "kerosene"       {:cargo/name "Kerosene" :cargo/adr #{:adr/flammable-liquids}}
+    "ketchup"        {:cargo/name "Ketchup"}
+    "lamb_stom"      {:cargo/name "Lamb Stomachs"}
+    "largetubes"     {:cargo/name "Large Tubes"}
+    "lavender"       {:cargo/name "Lavender"}
+    "lead"           {:cargo/name "Lead"}
+    "limonades"      {:cargo/name "Lemonade"}
+    "live_catt_fr"   {:cargo/name "Live Cattle"}
+    "live_cattle"    {:cargo/name "Live Cattle"}
+    "liver_paste"    {:cargo/name "Liver Paste"}
+    "locomotive"     {:cargo/name "Locomotive - Vossloh G6"}
+    "logs"           {:cargo/name "Logs"}
+    "lpg"            {:cargo/name "LPG" :cargo/adr #{:adr/flammable-liquids}}
+    "lumber"         {:cargo/name "Lumber"}
+    "lux_yacht"      {:cargo/name "Yacht - Queen V39"}
+    "magnesium"      {:cargo/name "Magnesium" :cargo/adr #{:adr/flammable-solids}}
+    "maple_syrup"    {:cargo/name "Maple Syrup"}
+    "marb_blck"      {:cargo/name "Marble Blocks"}
+    "marb_blck2"     {:cargo/name "Marble Blocks"}
+    "marb_slab"      {:cargo/name "Marble Slab"}
+    "mason_jars"     {:cargo/name "Mason Jars"}
+    "med_equip"      {:cargo/name "Medical Equipment"}
+    "med_vaccine"    {:cargo/name "Medical Vaccines" :cargo/adr #{:adr/poison}}
+    "mercuric"       {:cargo/name "Mercuric Chloride" :cargo/adr #{:adr/poison}}
+    "metal_beams"    {:cargo/name "Metal Beams"}
+    "metal_cans"     {:cargo/name "Metal Cans"}
+    "metal_center"   {:cargo/name "Metal Centering"}
+    "metal_pipes"    {:cargo/name "Iron Pipes"}
+    "milk"           {:cargo/name "Milk"}
+    "milk_t"         {:cargo/name "Milk"}
+    "mobile_crane"   {:cargo/name "Mobile Crane"}
+    "mondeos"        {:cargo/name "mondeos???"}
+    "moto_tires"     {:cargo/name "Motorcycle Tyres"}
+    "motor_oil"      {:cargo/name "Motor Oil"}
+    "motor_oil_c"    {:cargo/name "Motor Oil"}
+    "motorcycles"    {:cargo/name "Motorcycles"}
+    "mozzarela"      {:cargo/name "Mozzarela"}
+    "mtl_coil"       {:cargo/name "Metal Coil"}
+    "natur_rubber"   {:cargo/name "Natural Rubber"}
+    "neon"           {:cargo/name "Neon" :cargo/adr #{:adr/gases}}
+    "nitrocel"       {:cargo/name "Nitrocellulose" :cargo/adr #{:adr/flammable-solids}}
+    "nitrogen"       {:cargo/name "Nitrogen" :cargo/adr #{:adr/gases}}
+    "nonalco_beer"   {:cargo/name "Non-alcoholic Beer"}
+    "nuts"           {:cargo/name "Nuts"}
+    "nylon_cord"     {:cargo/name "Nylon Cord"}
+    "oil"            {:cargo/name "Oil" :cargo/adr #{:adr/flammable-liquids}}
+    "oil_filt_c"     {:cargo/name "Oil Filters"}
+    "oil_filters"    {:cargo/name "Oil Filters"}
+    "olive_oil"      {:cargo/name "Olive Oil"}
+    "olive_oil_t"    {:cargo/name "Olive Oil"}
+    "olive_tree"     {:cargo/name "Olive tree??"}
+    "olives"         {:cargo/name "Olives"}
+    "onion"          {:cargo/name "Onions"}
+    "oranges"        {:cargo/name "Oranges"}
+    "ore"            {:cargo/name "Ore"}
+    "outdr_flr_tl"   {:cargo/name "Outdoor Floor Tiles"}
+    "overweight"     {:cargo/name "Overweight something???"}
+    "packag_food"    {:cargo/name "Packaged Food"}
+    "paper"          {:cargo/name "Paper"}
+    "pears"          {:cargo/name "Pears"}
+    "peas"           {:cargo/name "Peas"}
+    "perfor_frks"    {:cargo/name "Performance Forks"}
+    "pesticide"      {:cargo/name "Pesticides" :cargo/adr #{:adr/poison}}
+    "pesto"          {:cargo/name "Pesto"}
+    "pet_food"       {:cargo/name "Pet Food"}
+    "pet_food_c"     {:cargo/name "Pet Food"}
+    "petrol"         {:cargo/name "Gasoline/Petrol" :cargo/adr #{:adr/flammable-liquids}}
+    "phosphor"       {:cargo/name "White Phosphorus" :cargo/adr #{:adr/flammable-solids}}
+    "plant_substr"   {:cargo/name "Plant Substrate"}
+    "plast_film"     {:cargo/name "Plastic Film Rolls"}
+    "plast_film_c"   {:cargo/name "Plastic Film Rolls"}
+    "plastic_gra"    {:cargo/name "Plastic Granules"}
+    "plumb_suppl"    {:cargo/name "Plumbing Supplies"}
+    "plums"          {:cargo/name "Plums"}
+    "pnut_butter"    {:cargo/name "Peanut Butter"}
+    "polyst_box"     {:cargo/name "Polystyrene Boxes"}
+    "pork_meat"      {:cargo/name "Pork"}
+    "post_packag"    {:cargo/name "Post Packages"}
+    "pot_flowers"    {:cargo/name "Potted Flowers"}
+    "potahydro"      {:cargo/name "Potassium Hydroxide" :cargo/adr #{:adr/corrosive}}
+    "potassium"      {:cargo/name "Potassium" :cargo/adr #{:adr/flammable-solids}}
+    "potatoes"       {:cargo/name "Potatoes"}
+    "precast_strs"   {:cargo/name "Precast Stairs"}
+    "prosciutto"     {:cargo/name "Prosciutto"}
+    "protec_cloth"   {:cargo/name "Protective Clothing"}
+    "radiators"      {:cargo/name "Radiators"}
+    "re_bars"        {:cargo/name "Reinforcing Bars"}
+    "refl_posts"     {:cargo/name "Reflective Posts"}
+    "rice"           {:cargo/name "Rice"}
+    "rice_c"         {:cargo/name "Rice"}
+    "roller"         {:cargo/name "Roller - DYNA CC-2200"}
+    "roof_tiles"     {:cargo/name "Roof Tiles"}
+    "roofing_felt"   {:cargo/name "Roofing Felt"}
+    "rooflights"     {:cargo/name "Rooflights"}
+    "rye"            {:cargo/name "Rye"}
+    "salm_fillet"    {:cargo/name "Salmon Fillet"}
+    "salt_spice_c"   {:cargo/name "Salt & Spices"}
+    "salt_spices"    {:cargo/name "Salt & Spices"}
+    "sand"           {:cargo/name "Sand"}
+    "sandwch_pnls"   {:cargo/name "Sandwich Panels"}
+    "sausages"       {:cargo/name "Sausages"}
+    "sawpanels"      {:cargo/name "Sawdust Panels"}
+    "scaffoldings"   {:cargo/name "Scaffoldings"}
+    "scania_tr"      {:cargo/name "Scania Trucks"}
+    "scooters"       {:cargo/name "Scooters"}
+    "scrap_metals"   {:cargo/name "Scrap Metals"}
+    "seal_bearing"   {:cargo/name "Sealed Bearings"}
+    "sheep_wool"     {:cargo/name "Sheep Wool"}
+    "shock_absorb"   {:cargo/name "Shock Absorbers"}
+    "silica"         {:cargo/name "Silica"}
+    "smokd_eel"      {:cargo/name "Smoked Eel"}
+    "smokd_sprats"   {:cargo/name "Smoked Sprats"}
+    "sodchlor"       {:cargo/name "Sodium Hypochloride" :cargo/adr #{:adr/corrosive}}
+    "sodhydro"       {:cargo/name "Sodium Hydroxide" :cargo/adr #{:adr/corrosive}}
+    "sodium"         {:cargo/name "Sodium" :cargo/adr #{:adr/flammable-solids}}
+    "soy_milk"       {:cargo/name "Soy Milk"}
+    "soy_milk_t"     {:cargo/name "Soy Milk"}
+    "sq_tub"         {:cargo/name "Square Tubings"}
+    "steel_cord"     {:cargo/name "Steel Cord"}
+    "stone_dust"     {:cargo/name "Stone Dust"}
+    "stone_wool"     {:cargo/name "Stone Wool"}
+    "stones"         {:cargo/name "Stones"}
+    "straw_bales"    {:cargo/name "Straw Bales"}
+    "sugar"          {:cargo/name "Sugar"}
+    "sulfuric"       {:cargo/name "Sulfuric Acid" :cargo/adr #{:adr/corrosive}}
+    "tableware"      {:cargo/name "Tableware"}
+    "tomatoes"       {:cargo/name "Tomatoes"}
+    "toys"           {:cargo/name "Toys"}
+    "tracks"         {:cargo/name "Tracks"}
+    "tractor"        {:cargo/name "Crawler Tractor"}
+    "tractors"       {:cargo/name "Tractors"}
+    "train_part"     {:cargo/name "Train Axles?"}
+    "train_part2"    {:cargo/name "Train Undercarriage?"}
+    "transformat"    {:cargo/name "Transformer - PK900"}
+    "transmis"       {:cargo/name "Transmissions"}
+    "truck_batt"     {:cargo/name "Truck Batteries"}
+    "truck_batt_c"   {:cargo/name "Truck Batteries"}
+    "truck_rims"     {:cargo/name "Truck Rims"}
+    "truck_rims_c"   {:cargo/name "Truck Rims"}
+    "truck_tyres"    {:cargo/name "Truck Tyres"}
+    "tube"           {:cargo/name "Large Tubes"}
+    "tyres"          {:cargo/name "Tyres"}
+    "used_battery"   {:cargo/name "Used Car Batteries"}
+    "used_packag"    {:cargo/name "Used Packaging"}
+    "used_plast"     {:cargo/name "Used Plastics"}
+    "used_plast_c"   {:cargo/name "Used Plastics?"}
+    "vent_tube"      {:cargo/name "Ventilation Shaft"}
+    "vinegar"        {:cargo/name "Vinegar"}
+    "vinegar_c"      {:cargo/name "Vinegar"}
+    "volvo_cars"     {:cargo/name "Cars"}
+    "wallpanels"     {:cargo/name "Wall Panels"}
+    "watermelons"    {:cargo/name "Watermelons"}
+    "wheat"          {:cargo/name "Wheat"}
+    "windml_eng"     {:cargo/name "Wind Turbine Nacelle"}
+    "windml_tube"    {:cargo/name "Wind Turbine Tower"}
+    "wood_bark"      {:cargo/name "Wood Bark"}
+    "wooden_beams"   {:cargo/name "Wooden Beams"}
+    "wrk_cloth"      {:cargo/name "Work Clothes"}
+    "wshavings"      {:cargo/name "Wood Shavings"}
+    "yacht"          {:cargo/name "Yacht"}
+    "yogurt"         {:cargo/name "Yoghurt"}
+    "young_seed"     {:cargo/name "Young Seedlings"}}))
 
-(def cargos
-  {"acetylene"      {:name "Acetylene" :adr #{:gases}}
-   "acid"           {:name "Acid" :adr #{:corrosive}}
-   "air_mails"      {:name "Air Mails"}
-   "aircft_tires"   {:name "Aircraft Tyres"}
-   "aircond"        {:name "Air Conditioners"}
-   "almond"         {:name "Almonds"}
-   "ammunition"     {:name "Ammunition" :adr #{:explosive}}
-   "apples"         {:name "Apples"}
-   "apples_c"       {:name "Apples"}
-   "arsenic"        {:name "Arsenic" :adr #{:poison}}
-   "asph_miller"    {:name "Asphalt Miller"}
-   "atl_cod_flt"    {:name "Atlantic Cod Fillet"}
-   "backfl_prev"    {:name "Backflow Preventers"}
-   "barley"         {:name "Barley"}
-   "basil"          {:name "Basil"}
-   "beans"          {:name "Beans"}
-   "beef_meat"      {:name "Beef"}
-   "beverages"      {:name "Beverages"}
-   "beverages_c"    {:name "Beverages"}
-   "beverages_t"    {:name "Beverages"}
-   "big_bag_seed"   {:name "Big-Bags of Seeds"}
-   "boric_acid"     {:name "Boric Acid"}
-   "bottle_water"   {:name "Bottled Water"}
-   "brake_fluid"    {:name "Brake Fluid"}
-   "brake_pads"     {:name "Brake Pads"}
-   "bricks"         {:name "Bricks"}
-   "cable_reel"     {:name "Industrial Cable Reel"}
-   "can_sardines"   {:name "Canned Sardines"}
-   "canned_beans"   {:name "Canned Beans"}
-   "canned_beef"    {:name "Canned Beef"}
-   "canned_pork"    {:name "Canned Pork"}
-   "canned_tuna"    {:name "Canned Tuna"}
-   "car_balt1"      {:name "Cars"}
-   "car_balt2"      {:name "Cars?"}
-   "car_ibe"        {:name "Cars"}
-   "car_it"         {:name "Cars"}
-   "carb_water"     {:name "Carbonated Water"}
-   "carbn_pwdr_c"   {:name "Carbon Black Powder"}
-   "carrots"        {:name "Carrots"}
-   "carrots_c"      {:name "Carrots"}
-   "cars_fr"        {:name "Cars"}
-   "cauliflower"    {:name "Cauliflower"}
-   "caviar"         {:name "Caviar"}
-   "cement"         {:name "Cement"}
-   "cheese"         {:name "Cheese"}
-   "chem_sorb_c"    {:name "Chemical Sorbent"}
-   "chem_sorbent"   {:name "Chemical Sorbet"}
-   "chemicals"      {:name "Chemicals" :adr #{:gases}}
-   "chewing_gums"   {:name "Chewing Gums"}
-   "chicken_meat"   {:name "Chicken Meat"}
-   "chimney_syst"   {:name "Chimney Systems"}
-   "chlorine"       {:name "Chlorine" :adr #{:gases}}
-   "chocolate"      {:name "Chocolate"}
-   "clothes"        {:name "Clothes"}
-   "clothes_c"      {:name "Clothes"}
-   "coal"           {:name "Coal"}
-   "coconut_milk"   {:name "Coconut Milk"}
-   "coconut_oil"    {:name "Coconut Oil"}
-   "comp_process"   {:name "Computer Processors"}
-   "conc_juice_t"   {:name "Concentrate Juices"}
-   "concen_juice"   {:name "Concentrate Juices"}
-   "concr_beams"    {:name "Concrete Beams"}
-   "concr_beams2"   {:name "Concrete Beams"}
-   "concr_cent"     {:name "Concrete Centering"}
-   "concr_stair"    {:name "Concrete Stairs"}
-   "cont_trees"     {:name "Containerized Trees"}
-   "contamin"       {:name "Contaminated Material" :adr #{:poison}}
-   "copp_rf_gutt"   {:name "Copper Roof Gutters"}
-   "corks"          {:name "Corks"}
-   "cott_cheese"    {:name "Cottage Cheese"}
-   "cut_flowers"    {:name "Cut Flowers"}
-   "cyanide"        {:name "Cyanide" :adr #{:poison}}
-   "desinfection"   {:name "Disinfectant"}
-   "diesel"         {:name "Diesel" :adr #{:flammable-liquids}}
-   "diesel_gen"     {:name "Diesel Generators"}
-   "digger1000"     {:name "Wheel Loader"}
-   "digger500"      {:name "Backhoe Loader"}
-   "diggers"        {:name "Loaders"}
-   "dozer"          {:name "Dozer Crawl - Z35K"}
-   "driller"        {:name "Driller - D-50"}
-   "dryers"         {:name "Dryers"}
-   "drymilk"        {:name "Dry Milk"}
-   "dynamite"       {:name "Dynamite" :adr #{:explosive}}
-   "elect_wiring"   {:name "Electrical Wiring"}
-   "electronics"    {:name "Electronics"}
-   "emp_wine_bot"   {:name "Empty Wine Bottles"}
-   "empty_barr"     {:name "Empty Barrels"}
-   "empty_palet"    {:name "Empty Palettes"}
-   "emptytank"      {:name "Reservoir Tank?"}
-   "excav_soil"     {:name "Excavated Soil"}
-   "excavator"      {:name "Excavator"}
-   "exhausts_c"     {:name "Exhaust Systems"}
-   "explosives"     {:name "Explosives" :adr #{:explosive}}
-   "fertilizer"     {:name "Fertilizer"}
-   "fireworks"      {:name "Fireworks" :adr #{:explosive}}
-   "fish_chips"     {:name "Fish Fingers"}
-   "floorpanels"    {:name "Floor Panels"}
-   "flour"          {:name "Flour"}
-   "fluorine"       {:name "Fluorine" :adr #{:gases}}
-   "forklifts"      {:name "Forklifts"}
-   "fresh_fish"     {:name "Fresh Fish"}
-   "froz_octopi"    {:name "Frozen Octopi"}
-   "frozen_hake"    {:name "Frozen Hake"}
-   "frsh_herbs"     {:name "Fresh Herbs"}
-   "fuel_oil"       {:name "Fuel Oil" :adr #{:flammable-liquids}}
-   "fuel_tanks"     {:name "Fuel Tanks"}
-   "fueltanker"     {:name "Fuel Tanker" :adr #{:flammable-liquids}}
-   "furniture"      {:name "Furniture"}
-   "garlic"         {:name "Garlic"}
-   "glass"          {:name "Glass Panels?"}
-   "glass_packed"   {:name "Packed Glass"}
-   "gnocchi"        {:name "Gnocchi"}
-   "goat_cheese"    {:name "Goat Cheese"}
-   "granite_cube"   {:name "Granite Cube"}
-   "grapes"         {:name "Grapes"}
-   "graph_grease"   {:name "Graphite Grease"}
-   "grass_rolls"    {:name "Grass Rolls"}
-   "gravel"         {:name "Gravel"}
-   "guard_rails"    {:name "Guard Rails"}
-   "gummy_bears"    {:name "Gummy Bears"}
-   "harvest_bins"   {:name "Harvesting Bins"}
-   "hchemicals"     {:name "Hot Chemicals" :adr #{:gases}}
-   "helicopter"     {:name "Helicopter - 1808TX"}
-   "hi_volt_cabl"   {:name "High Voltage Cables"}
-   "hipresstank"    {:name "Pressure Tank"}
-   "hmetal"         {:name "Heavy Metals" :adr #{:poison}}
-   "honey"          {:name "Honey"}
-   "hwaste"         {:name "Hospital Waste" :adr #{:poison}}
-   "ibc_cont"       {:name "IBC Containers"}
-   "icecream"       {:name "Ice Cream"}
-   "iced_coffee"    {:name "Canned Iced Coffee"}
-   "iron_pipes"     {:name "Iron Pipes"}
-   "iveco_vans"     {:name "Braco Vans"}
-   "kerosene"       {:name "Kerosene" :adr #{:flammable-liquids}}
-   "ketchup"        {:name "Ketchup"}
-   "lamb_stom"      {:name "Lamb Stomachs"}
-   "largetubes"     {:name "Large Tubes"}
-   "lavender"       {:name "Lavender"}
-   "lead"           {:name "Lead"}
-   "limonades"      {:name "Lemonade"}
-   "live_catt_fr"   {:name "Live Cattle"}
-   "live_cattle"    {:name "Live Cattle"}
-   "liver_paste"    {:name "Liver Paste"}
-   "locomotive"     {:name "Locomotive - Vossloh G6"}
-   "logs"           {:name "Logs"}
-   "lpg"            {:name "LPG" :adr #{:flammable-liquids}}
-   "lumber"         {:name "Lumber"}
-   "lux_yacht"      {:name "Yacht - Queen V39"}
-   "magnesium"      {:name "Magnesium" :adr #{:flammable-solids}}
-   "maple_syrup"    {:name "Maple Syrup"}
-   "marb_blck"      {:name "Marble Blocks"}
-   "marb_blck2"     {:name "Marble Blocks"}
-   "marb_slab"      {:name "Marble Slab"}
-   "mason_jars"     {:name "Mason Jars"}
-   "med_equip"      {:name "Medical Equipment"}
-   "med_vaccine"    {:name "Medical Vaccines" :adr #{:poison}}
-   "mercuric"       {:name "Mercuric Chloride" :adr #{:poison}}
-   "metal_beams"    {:name "Metal Beams"}
-   "metal_cans"     {:name "Metal Cans"}
-   "metal_center"   {:name "Metal Centering"}
-   "metal_pipes"    {:name "Iron Pipes"}
-   "milk"           {:name "Milk"}
-   "milk_t"         {:name "Milk"}
-   "mobile_crane"   {:name "Mobile Crane"}
-   "mondeos"        {:name "mondeos???"}
-   "moto_tires"     {:name "Motorcycle Tyres"}
-   "motor_oil"      {:name "Motor Oil"}
-   "motor_oil_c"    {:name "Motor Oil"}
-   "motorcycles"    {:name "Motorcycles"}
-   "mozzarela"      {:name "Mozzarela"}
-   "mtl_coil"       {:name "Metal Coil"}
-   "natur_rubber"   {:name "Natural Rubber"}
-   "neon"           {:name "Neon" :adr #{:gases}}
-   "nitrocel"       {:name "Nitrocellulose" :adr #{:flammable-solids}}
-   "nitrogen"       {:name "Nitrogen" :adr #{:gases}}
-   "nonalco_beer"   {:name "Non-alcoholic Beer"}
-   "nuts"           {:name "Nuts"}
-   "nylon_cord"     {:name "Nylon Cord"}
-   "oil"            {:name "Oil" :adr #{:flammable-liquids}}
-   "oil_filt_c"     {:name "Oil Filters"}
-   "oil_filters"    {:name "Oil Filters"}
-   "olive_oil"      {:name "Olive Oil"}
-   "olive_oil_t"    {:name "Olive Oil"}
-   "olive_tree"     {:name "Olive tree??"}
-   "olives"         {:name "Olives"}
-   "onion"          {:name "Onions"}
-   "oranges"        {:name "Oranges"}
-   "ore"            {:name "Ore"}
-   "outdr_flr_tl"   {:name "Outdoor Floor Tiles"}
-   "overweight"     {:name "Overweight something???"}
-   "packag_food"    {:name "Packaged Food"}
-   "paper"          {:name "Paper"}
-   "pears"          {:name "Pears"}
-   "peas"           {:name "Peas"}
-   "perfor_frks"    {:name "Performance Forks"}
-   "pesticide"      {:name "Pesticides" :adr #{:poison}}
-   "pesto"          {:name "Pesto"}
-   "pet_food"       {:name "Pet Food"}
-   "pet_food_c"     {:name "Pet Food"}
-   "petrol"         {:name "Gasoline/Petrol" :adr #{:flammable-liquids}}
-   "phosphor"       {:name "White Phosphorus" :adr #{:flammable-solids}}
-   "plant_substr"   {:name "Plant Substrate"}
-   "plast_film"     {:name "Plastic Film Rolls"}
-   "plast_film_c"   {:name "Plastic Film Rolls"}
-   "plastic_gra"    {:name "Plastic Granules"}
-   "plumb_suppl"    {:name "Plumbing Supplies"}
-   "plums"          {:name "Plums"}
-   "pnut_butter"    {:name "Peanut Butter"}
-   "polyst_box"     {:name "Polystyrene Boxes"}
-   "pork_meat"      {:name "Pork"}
-   "post_packag"    {:name "Post Packages"}
-   "pot_flowers"    {:name "Potted Flowers"}
-   "potahydro"      {:name "Potassium Hydroxide" :adr #{:corrosive}}
-   "potassium"      {:name "Potassium" :adr #{:flammable-solids}}
-   "potatoes"       {:name "Potatoes"}
-   "precast_strs"   {:name "Precast Stairs"}
-   "prosciutto"     {:name "Prosciutto"}
-   "protec_cloth"   {:name "Protective Clothing"}
-   "radiators"      {:name "Radiators"}
-   "re_bars"        {:name "Reinforcing Bars"}
-   "refl_posts"     {:name "Reflective Posts"}
-   "rice"           {:name "Rice"}
-   "rice_c"         {:name "Rice"}
-   "roller"         {:name "Roller - DYNA CC-2200"}
-   "roof_tiles"     {:name "Roof Tiles"}
-   "roofing_felt"   {:name "Roofing Felt"}
-   "rooflights"     {:name "Rooflights"}
-   "rye"            {:name "Rye"}
-   "salm_fillet"    {:name "Salmon Fillet"}
-   "salt_spice_c"   {:name "Salt & Spices"}
-   "salt_spices"    {:name "Salt & Spices"}
-   "sand"           {:name "Sand"}
-   "sandwch_pnls"   {:name "Sandwich Panels"}
-   "sausages"       {:name "Sausages"}
-   "sawpanels"      {:name "Sawdust Panels"}
-   "scaffoldings"   {:name "Scaffoldings"}
-   "scania_tr"      {:name "Scania Trucks"}
-   "scooters"       {:name "Scooters"}
-   "scrap_metals"   {:name "Scrap Metals"}
-   "seal_bearing"   {:name "Sealed Bearings"}
-   "sheep_wool"     {:name "Sheep Wool"}
-   "shock_absorb"   {:name "Shock Absorbers"}
-   "silica"         {:name "Silica"}
-   "smokd_eel"      {:name "Smoked Eel"}
-   "smokd_sprats"   {:name "Smoked Sprats"}
-   "sodchlor"       {:name "Sodium Hypochloride" :adr #{:corrosive}}
-   "sodhydro"       {:name "Sodium Hydroxide" :adr #{:corrosive}}
-   "sodium"         {:name "Sodium" :adr #{:flammable-solids}}
-   "soy_milk"       {:name "Soy Milk"}
-   "soy_milk_t"     {:name "Soy Milk"}
-   "sq_tub"         {:name "Square Tubings"}
-   "steel_cord"     {:name "Steel Cord"}
-   "stone_dust"     {:name "Stone Dust"}
-   "stone_wool"     {:name "Stone Wool"}
-   "stones"         {:name "Stones"}
-   "straw_bales"    {:name "Straw Bales"}
-   "sugar"          {:name "Sugar"}
-   "sulfuric"       {:name "Sulfuric Acid" :adr #{:corrosive}}
-   "tableware"      {:name "Tableware"}
-   "tomatoes"       {:name "Tomatoes"}
-   "toys"           {:name "Toys"}
-   "tracks"         {:name "Tracks"}
-   "tractor"        {:name "Crawler Tractor"}
-   "tractors"       {:name "Tractors"}
-   "train_part"     {:name "Train Axles?"}
-   "train_part2"    {:name "Train Undercarriage?"}
-   "transformat"    {:name "Transformer - PK900"}
-   "transmis"       {:name "Transmissions"}
-   "truck_batt"     {:name "Truck Batteries"}
-   "truck_batt_c"   {:name "Truck Batteries"}
-   "truck_rims"     {:name "Truck Rims"}
-   "truck_rims_c"   {:name "Truck Rims"}
-   "truck_tyres"    {:name "Truck Tyres"}
-   "tube"           {:name "Large Tubes"}
-   "tyres"          {:name "Tyres"}
-   "used_battery"   {:name "Used Car Batteries"}
-   "used_packag"    {:name "Used Packaging"}
-   "used_plast"     {:name "Used Plastics"}
-   "used_plast_c"   {:name "Used Plastics?"}
-   "vent_tube"      {:name "Ventilation Shaft"}
-   "vinegar"        {:name "Vinegar"}
-   "vinegar_c"      {:name "Vinegar"}
-   "volvo_cars"     {:name "Cars"}
-   "wallpanels"     {:name "Wall Panels"}
-   "watermelons"    {:name "Watermelons"}
-   "wheat"          {:name "Wheat"}
-   "windml_eng"     {:name "Wind Turbine Nacelle"}
-   "windml_tube"    {:name "Wind Turbine Tower"}
-   "wood_bark"      {:name "Wood Bark"}
-   "wooden_beams"   {:name "Wooden Beams"}
-   "wrk_cloth"      {:name "Work Clothes"}
-   "wshavings"      {:name "Wood Shavings"}
-   "yacht"          {:name "Yacht"}
-   "yogurt"         {:name "Yoghurt"}
-   "young_seed"     {:name "Young Seedlings"}})
-
+(def index
+  (pci/register [flags cities cargos company-names city-human-name]))

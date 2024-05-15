@@ -44,5 +44,3 @@
                (str/includes? os "Mac")     (mac-path     game)
                :else (throw (Exception. (str "Unknown OS " os))))]
     (reduce #(File. %1 %2) home path)))
-
-

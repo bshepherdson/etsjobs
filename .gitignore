@@ -30,8 +30,8 @@ projects/**/pom.xml
 .nrepl-port
 
 # clojure-lsp
-.lsp/sqlite*.db
-.clj-kondo/**
+**/.lsp/
+**/.clj-kondo/**
 
 # Calva VS Code Extension
 .calva/output-window/output.calva-repl
