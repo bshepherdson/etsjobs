@@ -3,12 +3,13 @@
    [com.wsscode.pathom3.connect.built-in.resolvers :as pbir]
    [com.wsscode.pathom3.connect.operation :as pco]
    [com.wsscode.pathom3.connect.indexes :as pci]
-   [ets.jobs.ets2.map :as map]))
+   [ets.jobs.ets2.map :as map]
+   [ets.jobs.util.interface :refer [defachievement]]))
 
 (pco/defresolver baltic-country [{c :country/id}]
   {:country/baltic? (boolean (#{"EST" "FI" "LT" "LV" "RU"} c))})
 
-(defn- achievement [label spec f]
+#_(defn- achievement [label spec f]
   (let [flag   (keyword "job.cheevo" (name label))
         output (keyword "jobs" (name label))] ; eg. :jobs/cattle-drive
     [(pco/resolver label (merge {::pco/output [flag]} spec) f)
@@ -18,7 +19,7 @@
                    (fn [_env {jobs :jobs/all-available}]
                      {output (filter flag jobs)}))]))
 
-(defmacro ^:private defachievement
+#_(defmacro ^:private defachievement
   ([sym spec f] `(defachievement ~sym "(no docs)" ~spec ~f))
   ([sym docstring spec f]
    `(def ~(symbol sym) ~docstring
@@ -31,9 +32,6 @@
          sender  :company/id}    :job/origin}]
     {:job.cheevo/concrete-jungle (and baltic?
                                       (= "radus" sender))}))
-
-(comment
-  concrete-jungle)
 
 (defachievement industry-standard
   "2 deliveries to every paper mill, loco factory, and furniture factory in
@@ -82,23 +80,6 @@
         :keys [job/distance]}]
     {:job.cheevo/turkish-delight (and (>= distance 2500)
                                       (= origin "istanbul"))}))
-
-#_(pco/defresolver turkish-delight
-  [{{origin :city/id} :job/origin
-    distance           :job/distance}]
-  {::pco/input  [{:job/origin [:city/id]}
-                 :job/distance]
-   ::pco/output [:job.cheevo/turkish-delight]}
-  {:job.cheevo/turkish-delight (and (>= distance 2500)
-                                    (= origin "istanbul"))})
-
-#_(pco/defresolver turkish-delight-jobs
-  [{jobs :jobs/all-available}]
-  {::pco/input  [{:jobs/all-available   [:job/id :job.cheevo/turkish-delight]}]
-   ::pco/output [{:jobs/turkish-delight [:job/id]}]}
-  {:jobs/turkish-delight (for [job jobs
-                               :when (:job.cheevo/turkish-delight job)]
-                           (select-keys job [:job/id]))})
 
 (defachievement along-the-black-sea
   "Perfect deliveries either direction between these pairs:
@@ -196,10 +177,6 @@
                              (= "marina" recipient)
                              (= "yacht" cargo))}))
 
-(comment
-  (map (comp ::pco/input :config) sailor)
-  (map (comp ::pco/output :config) sailor))
-
 (defachievement cattle-drive
   "Complete a livestock delivery to Scandinavia."
   {::pco/input [{:job/cargo       [:cargo/id]}
@@ -282,146 +259,170 @@
 ;;  :job/cargo       {:cargo/id   "things"}
 ;;  :job/distance    1234 #_km}
 
-(def ^:private achievements
-  (pbir/static-table-resolver
-    :cheevo/id
-    {:whatever-floats-your-boat
-     {:cheevo/name   "Whatever Floats Your Boat"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Deliver to all container ports in Scandinavia (Container Port)."
-      :cheevo/flag   :job.cheevo/whatever-floats-your-boat}
+(def ^:private achievements-list
+  [{:cheevo/id     :whatever-floats-your-boat
+    :cheevo/name   "Whatever Floats Your Boat"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Deliver to all container ports in Scandinavia (Container Port)."
+    :cheevo/flag   :job.cheevo/whatever-floats-your-boat}
 
-     :sailor
-     {:cheevo/name   "Sailor"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Deliver yachts to all Scandinavian marinas (boat symbol)."
-      :cheevo/flag   :job.cheevo/sailor}
+   {:cheevo/id     :sailor
+    :cheevo/name   "Sailor"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Deliver yachts to all Scandinavian marinas (boat symbol)."
+    :cheevo/flag   :job.cheevo/sailor}
 
-     :volvo-trucks-lover
-     {:cheevo/name   "Volvo Trucks Lover"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Deliver trucks from the Volvo factory."
-      :cheevo/flag   :job.cheevo/volvo-trucks-lover}
-     :scania-trucks-lover
-     {:cheevo/name   "Scania Trucks Lover"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Deliver trucks from the Scania factory."
-      :cheevo/flag   :job.cheevo/scania-trucks-lover}
+   {:cheevo/id     :volvo-trucks-lover
+    :cheevo/name   "Volvo Trucks Lover"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Deliver trucks from the Volvo factory."
+    :cheevo/flag   :job.cheevo/volvo-trucks-lover}
 
-     :cattle-drive
-     {:cheevo/name   "Cattle Drive"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Complete a livestock delivery to Scandinavia."
-      :cheevo/flag   :job.cheevo/cattle-drive}
+   {:cheevo/id     :scania-trucks-lover
+    :cheevo/name   "Scania Trucks Lover"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Deliver trucks from the Scania factory."
+    :cheevo/flag   :job.cheevo/scania-trucks-lover}
 
-     :miner
-     {:cheevo/name   "Miner"
-      :cheevo/region :scandinavia
-      :cheevo/desc   "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
-      :cheevo/flag   :job.cheevo/miner}
+   {:cheevo/id     :cattle-drive
+    :cheevo/name   "Cattle Drive"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Complete a livestock delivery to Scandinavia."
+    :cheevo/flag   :job.cheevo/cattle-drive}
 
-    ;; Baltic
-    :concrete-jungle
-    {:cheevo/name   "Concrete Jungle"
-     :cheevo/region :baltic
-     :cheevo/desc   "Complete 10 deliveries from concrete plants (Radus, Радус)"
-     :cheevo/flag   :job.cheevo/concrete-jungle}
+   {:cheevo/id     :miner
+    :cheevo/name   "Miner"
+    :cheevo/region {:region/id :scandinavia}
+    :cheevo/desc   "Deliver to all quarries in Scandinavia (Nordic Stenbrott, MS Stein)."
+    :cheevo/flag   :job.cheevo/miner}
 
-    :industry-standard
-    {:cheevo/name   "Industry Standard"
-     :cheevo/region :baltic
-     :cheevo/desc   (str "Complete 2 deliveries to every paper mill, loco factory, and"
-                         "furniture maker in the Baltic region (LVR, Renat, Viljo "
-                         "Paperitehdas Oy, Estonian Paper AS, VPF).")
-     :cheevo/flag   :job.cheevo/industry-standard}
+   ;; Baltic
+   {:cheevo/id     :concrete-jungle
+    :cheevo/name   "Concrete Jungle"
+    :cheevo/region {:region/id :baltic}
+    :cheevo/desc   "Complete 10 deliveries from concrete plants (Radus, Радус)"
+    :cheevo/flag   :job.cheevo/concrete-jungle}
 
-    :exclave-transit
-    {:cheevo/name   "Exclave Transit"
-     :cheevo/region :baltic
-     :cheevo/desc   "Complete 5 deliveries from Kaliningrad to any other Russian city."
-     :cheevo/flag   :job.cheevo/exclave-transit}
+   {:cheevo/id     :industry-standard
+    :cheevo/name   "Industry Standard"
+    :cheevo/region {:region/id :baltic}
+    :cheevo/desc   (str "Complete 2 deliveries to every paper mill, loco factory, and"
+                        "furniture maker in the Baltic region (LVR, Renat, Viljo "
+                        "Paperitehdas Oy, Estonian Paper AS, VPF).")
+    :cheevo/flag   :job.cheevo/industry-standard}
 
-    :like-a-farmer
-    {:cheevo/name   "Like a Farmer"
-     :cheevo/region :baltic
-     :cheevo/desc   "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
-     :cheevo/flag   :job.cheevo/like-a-farmer}
+   {:cheevo/id     :exclave-transit
+    :cheevo/name   "Exclave Transit"
+    :cheevo/region {:region/id :baltic}
+    :cheevo/desc   "Complete 5 deliveries from Kaliningrad to any other Russian city."
+    :cheevo/flag   :job.cheevo/exclave-transit}
 
-    ;; Beyond the Black Sea
-    :turkish-delight
-    {:cheevo/name   "Turkish Delight"
-     :cheevo/region :black-sea
-     :cheevo/desc   "Complete 3 deliveries from Istanbul which are at least 2500km long."
-     :cheevo/flag   :job.cheevo/turkish-delight}
+   {:cheevo/id     :like-a-farmer
+    :cheevo/name   "Like a Farmer"
+    :cheevo/region {:region/id :baltic}
+    :cheevo/desc   "Deliver to each farm in the Baltic. (Agrominta UAB, Eviksi, Maatila Egres, Onnelik Talu, Zelenye Polja)"
+    :cheevo/flag   :job.cheevo/like-a-farmer}
 
-    :along-the-black-sea
-    {:cheevo/name   "Along the Black Sea"
-     :cheevo/region :black-sea
-     :cheevo/desc   "Complete perfect deliveries in any order or direction between these coastal cities."
-     :cheevo/flag   :job.cheevo/along-the-black-sea}
+   ;; Beyond the Black Sea
+   {:cheevo/id     :turkish-delight
+    :cheevo/name   "Turkish Delight"
+    :cheevo/region {:region/id :black-sea}
+    :cheevo/desc   "Complete 3 deliveries from Istanbul which are at least 2500km long."
+    :cheevo/flag   :job.cheevo/turkish-delight}
 
-    :orient-express
-    {:cheevo/name   "Orient Express"
-     :cheevo/region :black-sea
-     :cheevo/desc   "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
-     :cheevo/flag   :job.cheevo/orient-express}
+   {:cheevo/id     :along-the-black-sea
+    :cheevo/name   "Along the Black Sea"
+    :cheevo/region {:region/id :black-sea}
+    :cheevo/desc   "Complete perfect deliveries in any order or direction between these coastal cities."
+    :cheevo/flag   :job.cheevo/along-the-black-sea}
 
-    ;; Italia
-    :captain
-    {:cheevo/name   "Captain"
-     :cheevo/region :italia
-     :cheevo/desc   "Deliver to all Italian shipyards. (Cantiare Navale)"
-     :cheevo/flag   :job.cheevo/captain}
+   {:cheevo/id     :orient-express
+    :cheevo/name   "Orient Express"
+    :cheevo/region {:region/id :black-sea}
+    :cheevo/desc   "Complete deliveries between the following cities, in order: Paris, Strasbourg, Munich, Vienna, Budapest, Bucharest, Istanbul. (Requires Going East as well!)"
+    :cheevo/flag   :job.cheevo/orient-express}
 
-    :michaelangelo
-    {:cheevo/name   "Michaelangelo"
-     :cheevo/region :italia
-     :cheevo/desc   "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
-     :cheevo/flag   :job.cheevo/michaelangelo}
+   ;; Italia
+   {:cheevo/id     :captain
+    :cheevo/name   "Captain"
+    :cheevo/region {:region/id :italia}
+    :cheevo/desc   "Deliver to all Italian shipyards. (Cantiare Navale)"
+    :cheevo/flag   :job.cheevo/captain}
 
-    ;; Vive la France
-    :go-nuclear
-    {:cheevo/name   "Go Nuclear"
-     :cheevo/region :vive-la-france
-     :cheevo/desc   "Deliver to five nuclear power plants in France. (Nucleon)"
-     :cheevo/flag   :job.cheevo/go-nuclear}
+   {:cheevo/id     :michaelangelo
+    :cheevo/name   "Michaelangelo"
+    :cheevo/region {:region/id :italia}
+    :cheevo/desc   "Deliver from the Carrara quarry (Marmo SpA in Livorno)."
+    :cheevo/flag   :job.cheevo/michaelangelo}
 
-    :check-in-check-out
-    {:cheevo/name   "Check in, Check out"
-     :cheevo/region :vive-la-france
-     :cheevo/desc   "Deliver to all cargo airport terminals in France (FLE)."
-     :cheevo/flag   :job.cheevo/check-in-check-out}
+   ;; Vive la France
+   {:cheevo/id     :go-nuclear
+    :cheevo/name   "Go Nuclear"
+    :cheevo/region {:region/id :vive-la-france}
+    :cheevo/desc   "Deliver to five nuclear power plants in France. (Nucleon)"
+    :cheevo/flag   :job.cheevo/go-nuclear}
 
-    :gas-must-flow
-    {:cheevo/name   "Gas Must Flow"
-     :cheevo/region :vive-la-france
-     :cheevo/desc   "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
-     :cheevo/flag   :job.cheevo/gas-must-flow}
+   {:cheevo/id     :check-in-check-out
+    :cheevo/name   "Check in, Check out"
+    :cheevo/region {:region/id :vive-la-france}
+    :cheevo/desc   "Deliver to all cargo airport terminals in France (FLE)."
+    :cheevo/flag   :job.cheevo/check-in-check-out}
 
-    ;; Iberia
-    :lets-get-shipping
-    {:cheevo/name   "Let's Get Shipping"
-     :cheevo/region :iberia
-     :cheevo/desc   "Deliver to all container ports in Iberia (TS Atlas)."
-     :cheevo/flag   :job.cheevo/lets-get-shipping}
+   {:cheevo/id     :gas-must-flow
+    :cheevo/name   "Gas Must Flow"
+    :cheevo/region {:region/id :vive-la-france}
+    :cheevo/desc   "Deliver diesel, LPG or gasoline/petrol to all truck stops in France. (Eco)"
+    :cheevo/flag   :job.cheevo/gas-must-flow}
 
-    :fleet-builder
-    {:cheevo/name   "Fleet Builder"
-     :cheevo/region :iberia
-     :cheevo/desc   "Deliver to all shipyards in Iberia (Ocean Solution Group)."
-     :cheevo/flag   :job.cheevo/fleet-builder}
+   ;; Iberia
+   {:cheevo/id     :lets-get-shipping
+    :cheevo/name   "Let's Get Shipping"
+    :cheevo/region {:region/id :iberia}
+    :cheevo/desc   "Deliver to all container ports in Iberia (TS Atlas)."
+    :cheevo/flag   :job.cheevo/lets-get-shipping}
 
-    :taste-the-sun
-    {:cheevo/name   "Taste the Sun"
-     :cheevo/region :iberia
-     :cheevo/desc   "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
-     :cheevo/flag   :job.cheevo/taste-the-sun}
+   {:cheevo/id     :fleet-builder
+    :cheevo/name   "Fleet Builder"
+    :cheevo/region {:region/id :iberia}
+    :cheevo/desc   "Deliver to all shipyards in Iberia (Ocean Solution Group)."
+    :cheevo/flag   :job.cheevo/fleet-builder}
 
-    :iberian-pilgrimage
-    {:cheevo/name   "Iberian Pilgrimage"
-     :cheevo/region :iberia
-     :cheevo/desc   "Deliver to A Coruña from Lisbon, Seville and Pamplona."
-     :cheevo/flag   :job.cheevo/iberian-pilgrimage}}))
+   {:cheevo/id     :taste-the-sun
+    :cheevo/name   "Taste the Sun"
+    :cheevo/region {:region/id :iberia}
+    :cheevo/desc   "Deliver ADR cargo to all solar power plants in Iberia (Engeron)."
+    :cheevo/flag   :job.cheevo/taste-the-sun}
+
+   {:cheevo/id     :iberian-pilgrimage
+    :cheevo/name   "Iberian Pilgrimage"
+    :cheevo/region {:region/id :iberia}
+    :cheevo/desc   "Deliver to A Coruña from Lisbon, Seville and Pamplona."
+    :cheevo/flag   :job.cheevo/iberian-pilgrimage}])
+
+(def ^:private all-achievements
+  (pbir/constantly-resolver
+    :achievements/all
+    (mapv #(select-keys % [:cheevo/id]) achievements-list)))
+
+(defn- table-grouped-by
+  ([source key-fn] (table-grouped-by source key-fn key-fn))
+  ([source key-fn prop]
+   (pbir/static-table-resolver
+     prop
+     (group-by key-fn source))))
+
+(defn- table-indexed-by
+  ([source key-fn] (table-indexed-by source key-fn key-fn))
+  ([source key-fn prop]
+   (pbir/static-table-resolver
+     prop
+     (into {} (map (juxt key-fn identity) source)))))
+
+(def ^:private achievements-by-id
+  (table-indexed-by achievements-list :cheevo/id))
+
+(def ^:private achievements-by-region
+  (table-grouped-by achievements-list :cheevo/region :region/id))
 
 (def achievement-job-flags
   [:job.cheevo/along-the-black-sea
@@ -448,6 +449,16 @@
    :job.cheevo/whatever-floats-your-boat])
 
 (def ^:private regions
+  (pbir/constantly-resolver
+    :regions/all
+    [{:region/id :scandinavia}
+     {:region/id :baltic}
+     {:region/id :black-sea}
+     {:region/id :italia}
+     {:region/id :vive-la-france}
+     {:region/id :iberia}]))
+
+(def ^:private region-table
   (pbir/static-table-resolver
     :region/id
     {:scandinavia    {:region/name "Scandinavia"}
@@ -460,8 +471,10 @@
 (def index
   (pci/register
     [;; Top level
-     achievements
-     regions
+     all-achievements
+     achievements-by-id
+     achievements-by-region
+     regions region-table
      ;; Misc
      baltic-country
      scandinavian-country

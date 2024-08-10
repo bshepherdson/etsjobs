@@ -519,16 +519,15 @@
 
 (defn job-search [game profile-id query]
   (p.eql/process
-    (merge job-search-env (parse-economy game profile-id))
+    (merge ets2/pathom-index
+           job-search-env
+           (parse-economy game profile-id))
     query))
 
 (comment
   (-> (job-search :ets2 "426973686F7032"
-                  [:jobs/along-the-black-sea :jobs/captain :jobs/cattle-drive
-                   :jobs/check-in-check-out :jobs/concrete-jungle
-                   :jobs/exclave-transit :jobs/go-nuclear
-                   :jobs/iberian-pilgrimage :jobs/industry-standard
-                   :jobs/fleet-builder :jobs/lets-get-shipping
-                   :jobs/like-a-farmer :jobs/michaelangelo :jobs/miner
-                   :jobs/orient-express :jobs/sailor :jobs/taste-the-sun
-                   :jobs/turkish-delight :jobs/whatever-floats-your-boat])))
+                  [{:regions/all [:region/id
+                                  :region/name
+                                  :region/cheevos]}
+                   {:achievements/all [:cheevo/id]}
+                   ])))
