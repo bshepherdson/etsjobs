@@ -9,6 +9,7 @@
         poly/http        {:local/root "../../components/http"}
         poly/search      {:local/root "../../components/search"}
         poly/sii         {:local/root "../../components/sii"}
+        poly/util        {:local/root "../../components/util"}
 
         ; Polylith bases
         poly/local       {:local/root "../../bases/local"}}

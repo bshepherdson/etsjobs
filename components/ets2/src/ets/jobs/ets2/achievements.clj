@@ -4,7 +4,7 @@
    [com.wsscode.pathom3.connect.operation :as pco]
    [com.wsscode.pathom3.connect.indexes :as pci]
    [ets.jobs.ets2.map :as map]
-   [ets.jobs.util.interface :refer [defachievement]]))
+   [ets.jobs.util.interface :as util :refer [defachievement]]))
 
 (pco/defresolver baltic-country [{c :country/id}]
   {:country/baltic? (boolean (#{"EST" "FI" "LT" "LV" "RU"} c))})
@@ -152,18 +152,24 @@
   {:country/scandinavian? (boolean (#{"DK" "N" "S"} c))})
 
 ; TODO Test this one - no jobs found.
-#_(pco/defresolver volvo-trucks-lover
+(defachievement volvo-trucks-lover
   "Deliver trucks from the Volvo factory to a dealer."
-  [{:keys [cargo sender]}]
-  (and (= "volvo_fac" sender)
-       (= "trucks" cargo)))
+  {::pco/input [{:job/cargo  [:cargo/id]}
+                {:job/origin [:company/id]}]}
+  (fn [_env {{cargo  :cargo/id}   :job/cargo
+             {sender :company/id} :job/origin}]
+    {:job.cheevo/volvo-trucks-lover (and (= "volvo_fac" sender)
+                                         (= "trucks" cargo))}))
 
 ; TODO Test this one - no jobs found.
-#_(defn scania-trucks-lover
+(defachievement scania-trucks-lover
   "Deliver trucks from Scania factory to a dealer."
-  [{:keys [cargo sender]}]
-  (and (= "scania_fac" sender)
-       (= "trucks" cargo)))
+  {::pco/input [{:job/cargo  [:cargo/id]}
+                {:job/origin [:company/id]}]}
+  (fn [_env {{cargo  :cargo/id}   :job/cargo
+             {sender :company/id} :job/origin}]
+    {:job.cheevo/scania-trucks-lover (and (= "scania_fac" sender)
+                                          (= "trucks" cargo))}))
 
 (defachievement sailor
   "Deliver yachts to all Scandinavian marinas (marina)."
@@ -224,16 +230,16 @@
                                          (= "F" country))}))
 
 ;; TODO: Implement this one once I can see a "gas must flow" job.
-#_(pco/defresolver gas-must-flow
+(defachievement gas-must-flow
   "Deliver petrol/gasoline, diesel, or LPG to all truck stops in France."
-  [{{cargo     :cargo/id}   :job/cargo
-    {recipient :company/id
-     country   :country/id} :job/destination}]
   {::pco/input [{:job/destination [:company/id :country/id]}
                 {:job/cargo       [:cargo/id]}]}
-  {:job.cheevo/gas-must-flow (and (contains? #{"diesel" "lpg" "petrol"} cargo)
-                                  (= country "F")
-                                  (= recipient "something"))})
+  (fn [_env {{cargo     :cargo/id}   :job/cargo
+             {recipient :company/id
+              country   :country/id} :job/destination}]
+    {:job.cheevo/gas-must-flow (and (contains? #{"diesel" "lpg" "petrol"} cargo)
+                                    (= country "F")
+                                    (= recipient "something"))}))
 
 ;; Italy =====================================================================
 (defachievement captain
@@ -404,49 +410,42 @@
     :achievements/all
     (mapv #(select-keys % [:cheevo/id]) achievements-list)))
 
-(defn- table-grouped-by
-  ([source key-fn] (table-grouped-by source key-fn key-fn))
-  ([source key-fn prop]
-   (pbir/static-table-resolver
-     prop
-     (group-by key-fn source))))
-
-(defn- table-indexed-by
-  ([source key-fn] (table-indexed-by source key-fn key-fn))
-  ([source key-fn prop]
-   (pbir/static-table-resolver
-     prop
-     (into {} (map (juxt key-fn identity) source)))))
-
 (def ^:private achievements-by-id
-  (table-indexed-by achievements-list :cheevo/id))
+  (util/table-indexed-by achievements-list :cheevo/id))
 
 (def ^:private achievements-by-region
-  (table-grouped-by achievements-list :cheevo/region :region/id))
+  (group-by (comp :region/id :cheevo/region) achievements-list))
+
+(def ^:private region-table
+  (->> (for [[state label] [["AZ" "Arizona"] 
+                            ["CA" "California"]
+                            ["CO" "Colorado"]
+                            ["ID" "Idaho"] 
+                            ["NM" "New Mexico"] 
+                            ["NV" "Nevada"]
+                            ["OR" "Oregon"] 
+                            ["UT" "Utah"] 
+                            ["WA" "Washington"] 
+                            ["WY" "Wyoming"]]]
+         [state {:region/name         label
+                 :region/achievements (mapv :cheevo/id (achievements-by-region state))}])
+       (into {})
+       (pbir/static-table-resolver :region/id)))
+
+(def ^:private achievements-by-region
+  (util/table-grouped-by
+    achievements-list :region/id
+    (comp :region/id :cheevo/region)
+    #(assoc {} :region/achievements %)))
 
 (def achievement-job-flags
-  [:job.cheevo/along-the-black-sea
-   :job.cheevo/captain
-   :job.cheevo/cattle-drive
-   :job.cheevo/check-in-check-out
-   :job.cheevo/concrete-jungle
-   :job.cheevo/exclave-transit
-   :job.cheevo/fleet-builder
-   #_:job.cheevo/gas-must-flow
-   :job.cheevo/go-nuclear
-   :job.cheevo/iberian-pilgrimage
-   :job.cheevo/industry-standard
-   :job.cheevo/lets-get-shipping
-   :job.cheevo/like-a-farmer
-   :job.cheevo/michaelangelo
-   :job.cheevo/miner
-   :job.cheevo/orient-express
-   :job.cheevo/sailor
-   #_:job.cheevo/scania-trucks-lover
-   :job.cheevo/taste-the-sun
-   :job.cheevo/turkish-delight
-   #_:job.cheevo/volvo-trucks-lover
-   :job.cheevo/whatever-floats-your-boat])
+  (->> achievements-list
+       (map :cheevo/flag)
+       (remove #{:job.cheevo/gas-must-flow
+                 :job.cheevo/scania-trucks-lover
+                 :job.cheevo/volvo-trucks-lover})
+       sort
+       vec))
 
 (def ^:private regions
   (pbir/constantly-resolver
@@ -458,15 +457,22 @@
      {:region/id :vive-la-france}
      {:region/id :iberia}]))
 
+(def ^:private achievements-by-region
+  (group-by (comp :region/id :cheevo/region) achievements-list))
+
 (def ^:private region-table
-  (pbir/static-table-resolver
-    :region/id
-    {:scandinavia    {:region/name "Scandinavia"}
-     :baltic         {:region/name "Beyond the Baltic Sea"}
-     :black-sea      {:region/name "Road to the Black Sea"}
-     :italia         {:region/name "Italia"}
-     :vive-la-france {:region/name "Vive la France"}
-     :iberia         {:region/name "Iberia"}}))
+  (->> (for [[region contents] {:scandinavia    {:region/name "Scandinavia"}
+                                :baltic         {:region/name "Beyond the Baltic Sea"}
+                                :black-sea      {:region/name "Road to the Black Sea"}
+                                :italia         {:region/name "Italia"}
+                                :vive-la-france {:region/name "Vive la France"}
+                                :iberia         {:region/name "Iberia"}}]
+
+         (do
+           (prn "region-table inner" region (achievements-by-region region))
+           [region (assoc contents :region/achievements (achievements-by-region region))]))
+       (into {})
+       (pbir/static-table-resolver `region-table :region/id)))
 
 (def index
   (pci/register
@@ -485,6 +491,7 @@
      check-in-check-out
      concrete-jungle
      exclave-transit
+     gas-must-flow
      go-nuclear
      iberian-pilgrimage
      industry-standard
@@ -495,6 +502,8 @@
      miner
      orient-express
      sailor
+     scania-trucks-lover
      taste-the-sun
      turkish-delight
+     volvo-trucks-lover
      whatever-floats-your-boat]))

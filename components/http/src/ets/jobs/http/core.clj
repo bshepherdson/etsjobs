@@ -1,33 +1,41 @@
 (ns ets.jobs.http.core
   (:require
-    [ets.jobs.ats.interface  :as atsmap]
-    [ets.jobs.ets2.interface :as ets2map]
-    [ets.jobs.files.interface :as files]
-    [ets.jobs.search.interface :as jobs]
-    [hiccup.core :refer [html]])
+   [com.wsscode.pathom3.interface.eql :as p.eql]
+   [ets.jobs.ats.interface  :as atsmap]
+   [ets.jobs.ets2.interface :as ets2map]
+   [ets.jobs.files.interface :as files]
+   [ets.jobs.search.interface :as jobs]
+   [hiccup.core :refer [html]])
   (:import
-    [java.io File]))
-
+   [java.io File]))
 
 (defn ^:private human-name [game city]
-  (case game
+  (str city "_FIXME")
+  #_(case game
     :ets2 (ets2map/human-name city)
     :ats  (atsmap/human-name  city)))
 
 (defn ^:private cargos [game slug]
   (case game
-    :ets2 (ets2map/cargos slug)
-    :ats  (atsmap/cargos  slug)))
+    :ets2 [] #_(ets2map/cargos slug)
+    :ats  [] #_(atsmap/cargos  slug)))
 
 (defn ^:private company-names [game slug]
-  (case game
+  (str slug "_FIXME")
+  #_(case game
     :ets2 (ets2map/company-names slug)
     :ats  (atsmap/company-names  slug)))
 
+(comment
+
+  (p.eql/process 
+    jobs/env
+    )
+  )
 
 (defn index [_]
-  (let [ets-profiles (jobs/profiles (files/profile-root :ets2))
-        ats-profiles (jobs/profiles (files/profile-root :ats))]
+  (let [ets-profiles (jobs/profiles :ets2)
+        ats-profiles (jobs/profiles :ats)]
     {:status 200
      :headers {"Content-Type" "text/html"}
      :body
@@ -35,21 +43,19 @@
             [:h1 "Choose your profile"]
             [:h2 "Euro Truck Simulator 2"]
             [:ul
-             (for [{:keys [name dir]} ets-profiles]
+             (for [{:profile/keys [name dir]} ets-profiles]
                [:li [:a {:href (str "ets2/" (.getName dir))} name]])]
             [:h2 "American Truck Simulator"]
             [:ul
-             (for [{:keys [name dir]} ats-profiles]
+             (for [{:profile/keys [name dir]} ats-profiles]
                [:li [:a {:href (str "ats/" (.getName dir))} name]])]
             [:p "Don't see your profile? Make sure Steam Cloud is"
              [:strong "disabled"]
              ", and then load it and save your game."]])}))
 
-
 (defn not-found [_]
   {:status 404
    :body "Not found"})
-
 
 (def job-headings
   ["Expires in" "Origin" "Sender" "Destination" "Recipient" "Distance" "Cargo"])
@@ -117,62 +123,75 @@
         [:td {:style "text-align: right"} (format "%dkm" distance)]
         (cargo-description game cargo)])]))
 
-(defn achievement-section [game {:keys [key name desc]} all-jobs]
+(defn achievement-section [game profile {:cheevo/keys [id flag name desc]}]
   ; Sorting by descending time-to-live.
-  (let [jobs (sort-by #(- (:expires-in-mins %)) (get all-jobs key))]
-    (html [:section
-           [:h3 name]
-           [:p desc]
-           (if (empty? jobs)
-             [:p {:style "font-style: italic; color: #444"} "No jobs available."]
-             (job-block game jobs))])))
+  (let [jobs-key (keyword "jobs" (clojure.core/name id))
+        jobs     (jobs/jobs-query game profile [jobs-key])
+        #_#_jobs (sort-by #(- (:expires-in-mins %)) (get all-jobs key))]
+    (html
+      [:section
+       [:h3 name]
+       [:p desc]
+       [:p (pr-str jobs-key)]
+       [:p (pr-str jobs)]
+       (if (empty? jobs)
+         [:p {:style "font-style: italic; color: #444"} "No jobs available."]
+         [:p "jobs here"]
+         #_(job-block game jobs))])))
 
-(defn region-section [{:keys [name achievements]} game jobs]
+(defn region-section [game profile {:region/keys [id name achievements]}]
   (html
     [:section
      [:h2 name]
+     [:p (str "ID " id)]
+     [:p (pr-str achievements)]
      (for [ach achievements]
-       (achievement-section game ach jobs))]))
+       (achievement-section game profile ach))]))
 
 (defn time-str [{:keys [week day hour mins]}]
   (format "Week %2d, %s %02d:%02d" week day hour mins))
 
-(defn sanity-check [s]
-  (let [{:keys [cest local tz]} (jobs/local-time s)]
+(defn sanity-check [game profile]
+  (let [{:time/keys [cest local zone-name]} (jobs/time-info game profile)]
     [:section
      [:h2 "Sanity Check"]
      [:p "Check you have up-to-date jobs by confirming the in-game time."]
-     [:p [:strong "Time zones on:"]  " " (time-str local) " " tz]
+     [:p [:strong "Time zones on:"]  " " (time-str local) " " zone-name]
      [:p [:strong "Time zones off:"] " " (time-str cest)]]))
 
-(def ^:private region-list
- {:ets2 [:baltic :scandinavia :france :italia :iberia :black-sea]
-  :ats  [:ca :nv :or :wa :id :ut :wy :co :nm :az]})
+(def ^:private region-query
+  [:region/id :region/name :region/achievements])
 
-(defonce profile-cache
-  "Map of profile-id to [s jobs] set, holding the latest for each profile.
-  This greatly speeds up loading the page when navigating around."
-  (atom {}))
+(comment
+  (jobs/jobs-query
+    :ets2 "426973686F7032"
+    [{:regions/all region-query}])
+  )
 
 (defn profile-body [game profile]
-  (let [profile-dir (File. (files/profile-root game) profile)
-        s           (jobs/parse-latest profile-dir)
-        jobs        (jobs/achievable-jobs game s)]
-    (html [:div
-           [:style "body {font-family: sans-serif;}
-                   td { padding: 0 8px; }
-                   td.city {display: flex;}
-                   .flag {margin-left: 4px}
-                   .grow {flex-grow: 1; min-width: 12px;}
-                   .adr {margin: 0 4px; padding: 0 2px;}"]
-           [:h1 (str "Jobs for " profile)]
-           (sanity-check s)
-           (for [r (region-list game)]
-             (-> (jobs/game-meta game)
+  (html [:div
+         [:style "body {font-family: sans-serif;}
+          td { padding: 0 8px; }
+          td.city {display: flex;}
+          .flag {margin-left: 4px}
+          .grow {flex-grow: 1; min-width: 12px;}
+          .adr {margin: 0 4px; padding: 0 2px;}"]
+         [:h1 (str "Jobs for " profile)]
+         (sanity-check game profile)
+
+         ;; XXX: Remove this debug output
+         [:ul (for [job (take 20 (jobs/jobs-query game profile [:jobs/all-available]))]
+                [:li (pr-str job)])]
+         
+         (for [r (:regions/all (jobs/jobs-query
+                                 game profile
+                                 [{:regions/all region-query}]))]
+           (region-section game profile r)
+           #_(-> (jobs/game-meta game)
                  :regions
                  (get r)
-                 (region-section game jobs)))])))
-
+                 (region-section game jobs)))
+         #_(for [r (jobs/region-list game)])]))
 
 (defn profiled [{:keys [uri]}]
   (let [[_  game-raw profile] (re-matches #"/(ats|ets2)/([\w\d]+)" uri)]
@@ -186,4 +205,3 @@
             (re-matches #"/(ats|ets2)/([\w\d]+)" uri) profiled
             :else not-found)]
     (h req)))
-

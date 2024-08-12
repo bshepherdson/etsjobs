@@ -1,18 +1,23 @@
 (ns ets.jobs.search.interface
   (:require
-    [ets.jobs.search.core :as core]))
+   [ets.jobs.search.core :as core]))
 
-#_(defn achievable-jobs [game s]
-  (core/achievable-jobs game s))
+(defn profiles [game]
+  (:profiles (core/global-query game [:profiles])))
 
-#_(def game-meta core/game-meta)
+(defn time-info [game profile-id]
+  (core/jobs-query
+    game profile-id
+    [:time/local
+     :time/cest
+     :time/zone-name]))
 
-#_(defn local-time [s]
-  (core/local-time s))
+(defn jobs-query [game profile query]
+  (core/jobs-query game profile query))
 
-#_(defn parse-latest [profile]
-  (core/parse-latest profile))
-
-#_(defn profiles [dir]
-  (core/profiles dir))
-
+(comment
+  (core/global-query :ets2 [:regions/all])
+  (core/jobs-query :ets2 "426973686F7032" [:regions/all])
+  (time-info :ets2 "426973686F7032")
+  (job-offers :ets2 "426973686F7032")
+  )

@@ -16,5 +16,3 @@
   On Linux, HOME/.local/share/Euro Truck Simulator 2"
   [game]
   (core/profile-root game))
-
-

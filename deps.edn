@@ -1,7 +1,4 @@
-{#_#_:extra-deps {io.github.seancorfield/build-clj {:git/tag "v0.9.2"
-                                                :git/sha "9c9f078602effe4df2b7b505003596ea1c5de436"}}
-
- :aliases  {:dev {:extra-paths ["development/src"]
+{:aliases  {:dev {:extra-paths ["development/src"]
                   :extra-deps
                   {org.clojure/clojure    {:mvn/version "1.11.2"}
                    org.clojure/tools.deps {:mvn/version "0.19.1417"}
@@ -21,6 +18,7 @@
                    poly/http        {:local/root "components/http"}
                    poly/search      {:local/root "components/search"}
                    poly/sii         {:local/root "components/sii"}
+                   poly/util        {:local/root "components/util"}
 
                    ; Polylith bases
                    poly/local       {:local/root "bases/local"}

@@ -1,14 +1,11 @@
 (ns ets.jobs.ats.interface
   (:require
-    [ets.jobs.ats.achievements :as ach]
-    [ets.jobs.ats.map :as map]))
+   [com.wsscode.pathom3.connect.indexes :as pci]
+   [ets.jobs.ats.achievements :as achievements]
+   [ets.jobs.ats.map :as map]))
 
-(def ats-meta ach/ats-meta)
+(def achievement-job-flags
+  achievements/achievement-job-flags)
 
-(def cargos        map/cargos)
-(def cities        map/cities)
-(def company-names map/company-names)
-
-(defn human-name [slug]
-  (map/human-name slug))
-
+(def pathom-index
+  (pci/register [achievements/index map/index]))
