@@ -13,12 +13,11 @@
                    poly/ats         {:local/root "components/ats"}
                    poly/database    {:local/root "components/database"}
                    poly/decrypt     {:local/root "components/decrypt"}
-                   poly/ets2        {:local/root "components/ets2"}
+                   ;poly/ets2        {:local/root "components/ets2"}
                    poly/files       {:local/root "components/files"}
                    poly/http        {:local/root "components/http"}
                    poly/search      {:local/root "components/search"}
                    poly/sii         {:local/root "components/sii"}
-                   poly/util        {:local/root "components/util"}
 
                    ; Polylith bases
                    poly/local       {:local/root "bases/local"}

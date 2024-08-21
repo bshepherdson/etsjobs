@@ -3,17 +3,17 @@
    [ets.jobs.search.core :as core]))
 
 (defn profiles [game]
-  (:profiles (core/global-query game [:profiles])))
+  (core/all-profiles game))
 
-(defn time-info [game profile-id]
+#_(defn time-info [game profile-id]
   (core/jobs-query
     game profile-id
     [:time/local
      :time/cest
      :time/zone-name]))
 
-(defn jobs-query [game profile query]
-  (core/jobs-query game profile query))
+(defn parse-latest-save [game profile-id]
+  (core/parse-latest-save game profile-id))
 
 (comment
   (core/global-query :ets2 [:regions/all])

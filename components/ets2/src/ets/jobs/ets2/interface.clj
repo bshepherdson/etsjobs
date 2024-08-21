@@ -1,6 +1,5 @@
 (ns ets.jobs.ets2.interface
   (:require
-   [com.wsscode.pathom3.connect.indexes :as pci]
    [ets.jobs.ets2.achievements :as achievements]
    [ets.jobs.ets2.map :as map]))
 
@@ -14,8 +13,8 @@
 #_(defn human-name [slug]
     (map/human-name slug))
 
-(def achievement-job-flags
+#_(def achievement-job-flags
   achievements/achievement-job-flags)
 
-(def pathom-index
+#_(def pathom-index
   (pci/register [map/index achievements/index]))

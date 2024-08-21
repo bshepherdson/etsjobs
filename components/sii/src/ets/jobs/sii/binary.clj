@@ -199,7 +199,7 @@
              :sii/block-id id}
             (:fields struct))))
 
-(defn- parse-sii-raw
+(defn parse-sii-raw
   "Parses the binary SII file, returning a map from IDs to maps for each block."
   [buf]
   ; Skip over the header
@@ -225,13 +225,6 @@
                    (assoc refs (:sii/block-id block) block))))))))
 
 (declare ^:private build-block)
-
-(def ^:private last-state (atom nil))
-
-(comment
-  (take 100 (keys (:raw @last-state)))
-  *e
-  )
 
 (defn- lookup [{:keys [cooked raw seen] :as s} block-id]
   (cond
