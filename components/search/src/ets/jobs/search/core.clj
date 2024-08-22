@@ -51,7 +51,8 @@
 (defn- time-breakdown [epoch-mins]
   (let [in-week (mod epoch-mins week-length)
         in-day  (mod epoch-mins day-length)]
-    {:week (inc (quot epoch-mins week-length))
+    {:game epoch-mins
+     :week (inc (quot epoch-mins week-length))
      :day  (nth days (quot in-week day-length))
      :hour (quot in-day 60)
      :mins (mod epoch-mins 60)}))
@@ -83,6 +84,11 @@
 
 (comment
   ;; TODO: Delivery order matters! Some achievements are about consecutive jobs.
+  (def conn (-> (profile-by-id :ats "42726164656E")
+                latest-save
+                decrypt/decode
+                sii/parse-sii-raw
+                ats/ingest-sii))
 
   ;; ATS achievements - Track ================================================
   ;; Sea Dog - Deliver cargo to a port in Oakland and a port in SF - Track

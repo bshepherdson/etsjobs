@@ -97,17 +97,12 @@
         [:td {:style "text-align: right"} (format "%dkm" distance-km)]
         (cargo-description cargo)])]))
 
-(defn- achievement-progress [{:keys [game db]} cheevo]
+(defn- achivement-info [{:keys [game db]} cheevo]
  (case game
-  :ats  (atsmap/achievement-progress  db cheevo)
-  :ets2 {} #_(ets2map/achievement-progress db cheevo)))
+  :ats  (atsmap/achievement-info  db cheevo)
+  :ets2 {} #_(ets2map/achievement-info db cheevo)))
 
-(defn- relevant-jobs [{:keys [game db]} cheevo]
- (case game
-  :ats  (atsmap/relevant-jobs  db cheevo)
-  :ets2 [] #_(ets2map/relevant-jobs db cheevo)))
-
-(defn- sort-by-expiration [{:keys [time]} jobs]
+(defn- sort-by-expiration [{{{time :game} :cest} :time} jobs]
  ;; Negative time remaining to get a descending sort.
   (sort-by #(- time (:offer/expiration-time %)) jobs))
 
@@ -117,8 +112,7 @@
 
 (defn- progress-frame [inner]
  (html
-  [:section
-   [:h4 "Progress"]
+  [:section.progress
    inner]))
 
 (defn- progress-list [f {:keys [completed needed]}]
@@ -133,15 +127,20 @@
 (defmethod progress-block :set/cargo [_ctx progress]
  (progress-list :cargo/name progress))
 
-(defmethod progress-block :count [_ctx {:keys [completed needed]}]
+(defmethod progress-block :set/city [_ctx progress]
+ (progress-list (comp :city/name :location/city) progress))
+
+(defmethod progress-block :set/company [_ctx progress]
+ (progress-list (comp :company/name :location/company) progress))
+
+(defmethod progress-block :count [_ctx {:keys [completed total]}]
  (progress-frame
-  (let [total (+ completed needed)]
-   [:div
-    [:progress {:max   total
-                :value completed
-                :style "margin-right: 1em"}
-     (str completed " / " total)]
-    (str completed " / " total)])))
+  [:div
+   [:progress {:max   total
+               :value completed
+               :style "margin-right: 1em"}
+    (str completed " / " total)]
+   (str completed " / " total)]))
 
 ;; START HERE: Output is ready, at least far enough to be getting along with.
 ;; Clean up the codebase, at least for ATS, and get the linter under control.
@@ -149,16 +148,13 @@
 ;; Then add the rest of the achievements.
 (defn achievement-section [ctx {:keys [id name desc]}]
   ; Sorting by descending time-to-live.
-  (let [progress (achievement-progress ctx id)
-        jobs     (->> (relevant-jobs ctx id)
-                      (sort-by-expiration ctx))]
+  (let [{:keys [jobs progress]} (achivement-info ctx id)
+        jobs                    (sort-by-expiration ctx jobs)]
     (html
       [:section
        [:h3 name]
        [:p desc]
        (progress-block ctx progress)
-       #_[:pre (with-out-str (clojure.pprint/pprint progress))]
-       #_[:pre (with-out-str (clojure.pprint/pprint jobs))]
        (if (empty? jobs)
          [:p {:style "font-style: italic; color: #444"} "No jobs available."]
          (job-block ctx jobs))])))
@@ -193,8 +189,8 @@
          (sanity-check ctx)
 
          (for [region (case game
-                  #_#_:ets2 ets2map/achievement-groups
-                  :ats  atsmap/achievement-groups)]
+                  #_#_:ets2 (ets2map/achievement-groups)
+                  :ats  (atsmap/achievement-groups))]
            (region-section ctx region)
            #_(-> (jobs/game-meta game)
                  :regions

@@ -21,23 +21,25 @@
   (ingest/ingest-sii conn sii-blocks)
   conn))
 
-(def achievement-groups
+(defn achievement-groups
  "List of specs for the various groups of achievements."
+ []
  achievements/achievement-groups)
 
-(defn relevant-jobs
-  "Queries for relevant jobs - that is, job offers which are available and
-  would contribute to the achievement."
-  [db cheevo-id]
-  (achievements/relevant-jobs db cheevo-id))
-
-(defn achievement-progress
-  "Returns an achievement-specific data structure giving the progress.
+(defn achievement-info
+  "Queries for relevant jobs and the current progress of the achievement.
   
-  - Sets of sources (most common) get `{:completed #{...}, :needed #{...}}.
-      - :needed is optional
-  - Counts get `{:completed 5, :required 10}`
-  - Frequencies get a map of `{key Count-structure}`
-  - Special cases are special"
+  Returns `{:jobs [...], :progress {...}}`.
+ 
+  `:jobs` is a list of job offers which are available and would contribute to
+  the achievement.
+  
+  `:progress` is a map with one of several kinds, indicated by `:type`:
+  - `:set/*` returns `{:completed [...], :needed [...]}`, with the inner values
+    determined by `:set/city`, `:set/cargo`, `:set/company`.
+  - `:count` returns `{:completed 3, :total 10}` for 3 / 10 progress.
+  - `:frequencies` returns `{label count-structure}`, ie. a set of `:count`
+    style structures labeled by the segment of the job
+  - `:special/*` are custom"
   [db cheevo-id]
-  (achievements/achievement-progress db cheevo-id))
+  (achievements/achievement-info db cheevo-id))

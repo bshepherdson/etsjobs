@@ -49,6 +49,15 @@
      {:job/cargo  [:cargo/ident :cargo/name {:cargo/adr [:db/ident]}]}
      :*]))
 
+(def ^:private city-pull
+  [:db/id {:location/city [:city/name]}])
+
+(def ^:private company-pull
+  [:db/id {:location/company [:company/name]}])
+
+(def ^:private cargo-pull
+  '[:db/id :cargo/name :cargo/ident])
+
 (def ^:private rules
   '[[(offer? ?job)
      [?job :offer/expiration-time _]]
@@ -61,20 +70,28 @@
      [?job :delivery/remaining-time ?remaining]
      [(>= ?remaining 0)]]])
 
-(defmulti relevant-jobs
-  "Queries for relevant jobs - that is, job offers which are available and
-  would contribute to the achievement."
+(defmulti achievement-info
+  "Queries for relevant jobs and the current progress of the achievement.
+  
+  Returns `{:jobs [...], :progress {...}}`.
+ 
+  `:jobs` is a list of job offers which are available and would contribute to
+  the achievement.
+  
+  `:progress` is a map with one of several kinds, indicated by `:type`:
+  - `:set/*` returns `{:completed [...], :needed [...]}`, with the inner values
+    determined by `:set/city`, `:set/cargo`, `:set/company`.
+  - `:count` returns `{:completed 3, :total 10}` for 3 / 10 progress.
+  - `:frequencies` returns `{label count-structure}`, ie. a set of `:count`
+    style structures labeled by the segment of the job
+  - `:special/*` are custom"
   (fn [_db achievement] achievement))
 
-(defmulti achievement-progress
-  "Returns an achievement-specific data structure giving the progress.
-  
-  - Sets of sources (most common) get `{:completed #{...}, :needed #{...}}.
-      - :needed is optional
-  - Counts get `{:completed 5, :required 10}`
-  - Frequencies get a map of `{key Count-structure}`
-  - Special cases are special"
-  (fn [_db achievement] achievement))
+;; ===========================================================================
+;; |                                                                         |
+;; |                          Heavy Cargo Pack                               |
+;; |                                                                         |
+;; ===========================================================================
 
 ;; I Thought This Should Be Heavy ============================================
 (def ^:private ach-should-be-heavy
@@ -88,7 +105,7 @@
               [?cargo :cargo/heavy? true]]
             db)))
 
-(defmethod achievement-progress :i-thought-this-should-be-heavy
+(defmethod achievement-info :i-thought-this-should-be-heavy
   [db _cheevo]
   (let [heavies (heavy-cargoes db) 
         done    (d/q '[:find [?cargo ...]
@@ -96,19 +113,74 @@
                        [?cargo :cargo/heavy? true]
                        [?job   :job/cargo    ?cargo]
                        (delivery? ?job)]
-                     db rules)]
-    {:type      :set/cargo
-     :completed done
-     :needed    (remove (set done) heavies)}))
+                     db rules)
+        needed  (remove (set done) heavies)]
+    {:progress {:type      :set/cargo
+                :completed (d/pull-many db cargo-pull done)
+                :needed    (d/pull-many db cargo-pull needed)}
+     :jobs     (d/q '[:find [(pull ?job spec) ...]
+                      :in $ % spec [?needed ...] :where
+                      [?job :job/cargo ?needed]
+                      (offer? ?job)]
+                    db rules job-pull needed)}))
 
-(defmethod relevant-jobs :i-thought-this-should-be-heavy
-  [db cheevo]
-  (let [{:keys [needed]} (achievement-progress db cheevo)]
-    (d/q '[:find [(pull ?job spec) ...]
-           :in $ % spec [?needed ...] :where
-           [?job :job/cargo ?needed]
-           (offer? ?job)]
-         db rules job-pull needed)))
+;; Heavy, but not a Bull in a China Shop =====================================
+(def ^:private ach-heavy-but-not-a-bull-in-a-china-shop
+  {:id      :heavy-but-not-a-bull-in-a-china-shop
+   :name    "Heavy, but not a Bull in a China Shop"
+   :group   :group/heavy-cargo
+   :desc    "Complete a PERFECT delivery of a heavy cargo which is at least 1000 miles long."})
+
+(def ^:private thousand-miles-in-km
+  "1000 mi = 1609.34 km"
+  1609)
+
+(defmethod achievement-info :heavy-but-not-a-bull-in-a-china-shop
+  [db _cheevo]
+  (let [cnt (d/q '[:find (count ?job) .
+                   :in $ % ?thousand-miles :where
+                   [?cargo :cargo/heavy? true]
+                   [?job   :job/cargo    ?cargo]
+                   (perfect? ?job)
+                   [?job   :job/distance-km ?distance]
+                   [(> ?distance ?thousand-miles)]] ;; 1000 mi = 1609.34 km
+                 db rules thousand-miles-in-km)
+        needed (if (zero? cnt) 1 0)]
+    {:progress {:type      :count
+                :completed cnt
+                :total     1}
+     :jobs     (when (pos? needed)
+                 (d/q '[:find [(pull ?job pattern) ...]
+                        :in $ % pattern ?thousand-miles :where
+                        [?cargo :cargo/heavy? true]
+                        [?job   :job/cargo    ?cargo]
+                        (offer? ?job)
+                        [?job   :job/distance-km ?distance]
+                        [(> ?distance ?thousand-miles)]]
+                      db rules job-pull thousand-miles-in-km))}))
+
+;; Bigger Cargo, Bigger Profit ===============================================
+;; TODO: Implement this one. It's a pain to check its status.
+#_(def ^:private ach-bigger-cargo-bigger-profit
+  {:id      :bigger-cargo-bigger-profit
+   :name    "Bigger Cargo, Bigger Profit"
+   :group   :group/heavy-cargo
+   :desc    "Earn $100,000 on 5 consecutive heavy cargo deliveries."})
+
+#_(defmethod achievement-progress :bigger-cargo-bigger-profit
+  [db _cheevo]
+  (let [last-5 (->> (d/q '[:find (max 5 ?end-time) . :where
+                           [?job :delivery/end-time ?end-time]]
+                         db)
+                    (d/pull-many job-pull)
+                    reverse)]
+    last-5))
+
+;; ===========================================================================
+;; |                                                                         |
+;; |                              California                                 |
+;; |                                                                         |
+;; ===========================================================================
 
 ;; Sea Dog ===================================================================
 (def ^:private ach-sea-dog
@@ -117,52 +189,68 @@
    :group   :state/ca
    :desc    "Deliver cargo to a port in Oakland and a port in San Francisco."})
 
-(defmethod achievement-progress :sea-dog [db _cheevo]
-  (let [ports     #{"oak_port" "sf_port"}
-        delivered (d/q '[:find [?port ...]
-                         :in $ % [?port ...] :where
+(defmethod achievement-info :sea-dog [db _cheevo]
+  (let [ports     (d/q '[:find [?loc ...]
+                         :in $ [?port ...] :where
                          [?company :company/ident    ?port]
-                         [?loc     :location/company ?company]
-                         [?job     :job/target       ?loc]
+                         [?loc     :location/company ?company]]
+                      db ["oak_port" "sf_port"])
+        _ (prn "ports" ports)
+        delivered (d/q '[:find [?loc ...]
+                         :in $ % [?loc ...] :where
+                         [?job :job/target ?loc]
                          (delivery? ?job)]
-                       db rules ports)]
-    {:type      :set/cargo
-     :completed delivered
-     :needed    (remove (set delivered) ports)}))
-
-(defmethod relevant-jobs :sea-dog [db cheevo]
-  (let [{:keys [needed]} (achievement-progress db cheevo)]
-    (d/q '[:find [(pull ?job spec) ...]
-           :in $ % spec [?needed ...] :where
-           [?company :company/ident    ?needed]
-           [?loc     :location/company ?company]
-           [?job     :job/target       ?loc]
-           (offer? ?job)]
-         db rules job-pull needed)))
+                       db rules ports)
+        _ (prn "delivered" delivered)
+        needed    (remove (set delivered) ports)
+        _ (prn "needed" needed)]
+    {:progress {:type      :set/company
+                :completed (d/pull-many db company-pull (set delivered))
+                :needed    (d/pull-many db company-pull needed)}
+     :jobs     (d/q '[:find [(pull ?job spec) ...]
+                      :in $ % spec [?needed ...] :where
+                      [?job :job/target ?needed]
+                      (offer? ?job)]
+                    db rules job-pull needed)}))
 
 ;; Cheers! ===================================================================
-;; START HERE - actually I should work out this model end to end before continuing further.
-;; Pick some group - Montana? Wyoming? where I have some achievements completed and some
-;; not. Implement them all, then follow that thread all the way to the UI.
+(def ^:private ach-cheers
+  {:id    :cheers
+   :name  "Cheers!"
+   :group  :state/ca
+   :desc   "Deliver cargo from all 3 vineyards in California."})
 
-(def ^:private achievements-ca
-  [;; California
-   {:name    "Sea Dog"
-    :region  :state/ca
-    :desc    "Deliver cargo to a port in Oakland and port in San Francisco."}
-    
-   {:id    :cheers
-    :name  "Cheers"
-    :region {:region/id "CA"}
-    :desc   "Deliver cargo from all 3 vineyards in California."
-    :flag   :job.cheevo/cheers}])
+(defmethod achievement-info :cheers
+  [db _cheevo]
+  (let [cheers-rules (into '[[(cheers ?loc)
+                              [?company :company/ident    "du_farm"]
+                              [?loc     :location/company ?company]
+                              [?loc     :location/city    ?city]
+                              [?city    :city/state       :state/ca]]]
+                           rules)
+        delivered    (take 2 (d/q '[:find [?loc ...]
+                            :in $ % :where
+                            (cheers ?loc)
+                            [?job :job/source ?loc]
+                            (delivery? ?job)]
+                          db cheers-rules))
+        vineyards    (d/q '[:find [?loc ...] :in $ % :where (cheers ?loc)]
+                          db cheers-rules)
+        needed       (remove (set delivered) vineyards)]
+    {:progress {:type      :set/city
+                :completed (d/pull-many db city-pull delivered)
+                :needed    (d/pull-many db city-pull needed)}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [?needed ...] :where
+                      [?job :job/source ?needed]
+                      (offer? ?job)]
+                    db rules job-pull needed)}))
 
-;; California
-#_(defachievement cheers
-  "Deliver cargo from all 3 vineyards in California."
-  {::pco/input [{:job/origin [:company/id]}]}
-  (fn [_env {{sender :company/id} :job/origin}]
-    {:job.cheevo/cheers (= sender "darchelle_uzau")}))
+(comment
+  (let [db     (d/db ets.jobs.search.core/conn) 
+        cheevo :cheers]
+    (achievement-info db cheevo))
+  )
 
 ;; Nevada
 #_(defachievement gold-fever
@@ -311,7 +399,7 @@
   (fn [_env {{cargo       :cargo/id}   :job/cargo
              {destination :country/id
               recipient   :company/id} :job/destination}]
-    {:job/cheevo/energy-from-above
+    {:job.cheevo/energy-from-above
      (boolean (and (#{"windml_eng" "windml_tube"} cargo)
                    (= destination "CO")
                    (= recipient "vp_epw_sit")))}))
@@ -335,11 +423,11 @@
   (fn [_env {{recipient :company/id} :job/destination}]
     {:job.cheevo/up-and-away (= "aport_den" recipient)}))
 
-;; Wyoming
-(defn- big-boy-site [{state   :country/id
-                      company :company/id}]
-  (and (= "WY" state)
-       (= "aml_rail_str" company)))
+;; ===========================================================================
+;; |                                                                         |
+;; |                                Wyoming                                  |
+;; |                                                                         |
+;; ===========================================================================
 
 ;; Big Boy ===================================================================
 (def ^:private ach-big-boy
@@ -348,10 +436,7 @@
    :group :state/wy
    :desc  "Deliver train parts, tamping machine and rails to or from the rail yard in Cheyenne."})
 
-(defn- pull-cargoes [db ids]
-  (d/pull-many db '[:db/id :cargo/name :cargo/ident] ids))
-
-(defmethod achievement-progress :big-boy
+(defmethod achievement-info :big-boy
   [db _cheevo]
   (let [slugs   ["train_part" "tamp_machine" "rails"]
         cargoes (d/q '[:find [?cargo ...]
@@ -367,71 +452,63 @@
                        [?cargo :cargo/ident      ?slug]
                        (delivery? ?job)
                        [?cargo :cargo/name       ?cargo-name]]
-                     db rules slugs [:job/source :job/target])]
-    {:type      :set/cargo
-     :completed (pull-cargoes db done)
-     :needed    (pull-cargoes db (remove (set done) cargoes))}))
-
-(defmethod relevant-jobs :big-boy
-  [db cheevo]
-  (let [needed (->> (achievement-progress db cheevo)
-                    :needed
-                    (map :db/id))]
-    (d/q '[:find [(pull ?job pattern) ...]
-           :in $ % pattern [?cargo ...] [?dir ...] :where
-           [?job   :job/cargo ?cargo]
-           (offer? ?job)
-           [?job   ?dir       ?loc]
-           [?loc   :location/city    [:city/ident "cheyenne"]]
-           [?loc   :location/company [:company/ident "aml_rail_str"]]]
-         db rules job-pull needed [:job/source :job/target])))
+                     db rules slugs [:job/source :job/target])
+        needed  (remove (set done) cargoes)]
+    {:progress {:type      :set/cargo
+                :completed (d/pull-many db cargo-pull done)
+                :needed    (d/pull-many db cargo-pull needed)}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [?cargo ...] [?dir ...] :where
+                      [?job   :job/cargo ?cargo]
+                      (offer? ?job)
+                      [?job   ?dir       ?loc]
+                      [?loc   :location/city    [:city/ident "cheyenne"]]
+                      [?loc   :location/company [:company/ident "aml_rail_str"]]]
+                    db rules job-pull needed [:job/source :job/target])}))
 
 ;; Buffalo Bill ==============================================================
 (def ^:private ach-buffalo-bill
   {:id    :buffalo-bill
    :name  "Buffalo Bill"
    :group :state/wy
-   :desc  (str "Complete 10 PERFECT cattle deliveries (no damage, no fines, "
-               "in-time) to livestock auctions in Wyoming.")})
+   :desc  "Complete 10 PERFECT cattle deliveries to livestock auctions in Wyoming."})
 
-(def ^:private buffalo-bill-rules
-  (concat rules
-          '[[(buffalo-bill? ?job)
-             [?job  :job/cargo        [:cargo/ident "cattle"]]
-             [?job  :job/target       ?tgt]
-             [?tgt  :location/company [:company/ident "bn_live_auc"]]
-             [?tgt  :location/city    ?city]
-             [?city :city/state       :state/wy]]]))
-
-(defmethod achievement-progress :buffalo-bill
+(defmethod achievement-info :buffalo-bill
   [db _cheevo]
-  {:type      :count
-   :completed (d/q '[:find (count ?job) .
-                     :in $ % :where
-                     (buffalo-bill? ?job)
-                     (perfect? ?job)]
-                   db buffalo-bill-rules)
-   :needed    10})
-
-(defmethod relevant-jobs :buffalo-bill [db _cheevo]
-  (d/q '[:find [(pull ?job pattern) ...]
-         :in $ % pattern :where
-         (buffalo-bill? ?job)
-         (offer? ?job)]
-       db buffalo-bill-rules job-pull))
-
-(comment
-  (let [db     (d/db ets.jobs.search.core/conn) 
-        cheevo :buffalo-bill]
-    #_(achievement-progress db cheevo)
-    (relevant-jobs        db cheevo))
-  )
+  (let [buffalo-bill-rules
+        (into '[[(buffalo-bill? ?job)
+                 [?job  :job/cargo        [:cargo/ident "cattle"]]
+                 [?job  :job/target       ?tgt]
+                 [?tgt  :location/company [:company/ident "bn_live_auc"]]
+                 [?tgt  :location/city    ?city]
+                 [?city :city/state       :state/wy]]]
+              rules)]
+    {:progress {:type      :count
+                :completed (d/q '[:find (count ?job) .
+                                  :in $ % :where
+                                  (buffalo-bill? ?job)
+                                  (perfect? ?job)]
+                                db buffalo-bill-rules)
+                :total     10}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern :where
+                      (buffalo-bill? ?job)
+                      (offer? ?job)]
+                    db buffalo-bill-rules job-pull)}))
 
 (def achievement-groups
-  [{:group   :state/wy
+  [{:group   :state/ca
+    :name    "California"
+    :cheevos [ach-sea-dog
+              ach-cheers]}
+   {:group   :state/wy
     :name    "Wyoming"
     :cheevos [ach-big-boy
-              ach-buffalo-bill]}])
+              ach-buffalo-bill]}
+   {:group   :group/heavy-cargo
+    :name    "Heavy Cargo"
+    :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
+              ach-should-be-heavy]}])
 
 #_(def ^:private achievements-list
   [;; California
@@ -558,66 +635,3 @@
     :cheevo/region {:region/id "WY"}
     :cheevo/desc   "Complete 10 PERFECT cattle deliveries to livestock auctions in Wyoming."
     :cheevo/flag   :job.cheevo/buffalo-bill}])
-
-#_(def ^:private all-achievements
-  (pbir/constantly-resolver
-    :achievements/all
-    (mapv #(select-keys % [:cheevo/id]) achievements-list)))
-
-#_(def ^:private achievements-by-id
-  (util/table-indexed-by achievements-list :cheevo/id))
-
-#_(def achievement-job-flags
-  (->> achievements-list
-       (map :cheevo/flag)
-       sort
-       vec))
-
-#_(def ^:private regions
-  (->> achievements-list
-       (map :cheevo/region)
-       set
-       vec
-       (pbir/constantly-resolver :regions/all)))
-
-#_(def ^:private achievements-by-region
-  (group-by (comp :region/id :cheevo/region) achievements-list))
-
-#_(def ^:private region-table
-  (->> (for [[state label] [["AZ" "Arizona"] 
-                            ["CA" "California"]
-                            ["CO" "Colorado"]
-                            ["ID" "Idaho"] 
-                            ["NM" "New Mexico"] 
-                            ["NV" "Nevada"]
-                            ["OR" "Oregon"] 
-                            ["UT" "Utah"] 
-                            ["WA" "Washington"] 
-                            ["WY" "Wyoming"]]]
-         [state {:region/name         label
-                 :region/achievements (mapv :cheevo/id (achievements-by-region state))}])
-       (into {})
-       (pbir/static-table-resolver :region/id)))
-
-#_(def index
-  (pci/register
-    [;; Top level
-     all-achievements
-     achievements-by-id
-     regions region-table
-     ;; Cheevo predicates
-     cabbage-to-cabbage
-     cheers
-     gold-fever
-     grown-in-idaho
-     keep-sailing
-     lumberjack
-     over-the-top
-     pump-it-up
-     sea-dog
-     sky-delivery
-     sky-harbor
-     some-like-it-salty
-     steel-wings
-     terminal-terminus
-     this-one-is-mine]))
