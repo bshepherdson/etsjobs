@@ -415,21 +415,6 @@
                         (offer? ?job)]
                       db cabbage-rules job-pull))}))
 
-(comment
-  (let [db     (d/db ets.jobs.search.core/conn) 
-        cheevo :cheers]
-    (->> (d/q '[:find ?city-name :where
-                [?city :city/state    :state/ut]
-                [?city :city/name     ?city-name]
-                [?loc  :location/city ?city]
-                [?loc  :location/company ?cmp]
-                [?cmp  :company/ident    "gal_oil_sit"]
-                ]
-              db)
-         sort)
-    )
-  ; elko -> cm_min_qry
-  )
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -608,7 +593,60 @@
                       (offer? ?job)]
                     db snake-rules job-pull needed)}))
 
-;; Colorado
+;; ===========================================================================
+;; |                                                                         |
+;; |                               Colorado                                  |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Energy From Above =========================================================
+(def ^:private ach-energy-from-above
+  {:id    :energy-from-above
+   :name  "Energy From Above"
+   :group :state/co
+   :desc  "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."})
+
+(defmethod achievement-info :energy-from-above [db _cheevo]
+  (let [required   (d/q '[:find ?cargo ?loc :where
+                          [?loc  :location/company [:company/ident "vp_epw_sit"]]
+                          [?loc  :location/city    ?city]
+                          [?city :city/state       :state/co]
+                          [(ground ["windml_eng" "windml_tube"]) [?cargo-slug ...]]
+                          [?cargo :cargo/ident ?cargo-slug]]
+                        db)
+        deliveries (d/q '[:find ?cargo ?loc
+                          :in $ % [[?cargo ?loc]] :where
+                          [?job :job/cargo     ?cargo]
+                          [?job :job/target    ?loc]
+                          (delivery? ?job)]
+                        db rules required)
+        needed     (remove (set deliveries) required)
+        details    (fn [pairs]
+                     (d/q '[:find [?str ...]
+                            :in $ [[?cargo ?loc]] :where
+                            [?cargo :cargo/name    ?cargo-name]
+                            [?loc   :location/city ?city]
+                            [?city  :city/name     ?city-name]
+                            [(str ?city-name " - " ?cargo-name) ?str]]
+                          db pairs))]
+    {:progress {:type      :special
+                :special   :energy-from-above
+                :completed (details deliveries)
+                :needed    (details needed)}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [[?cargo ?tgt]] :where
+                      [?job :job/cargo  ?cargo]
+                      [?job :job/target ?tgt]
+                      (offer? ?job)]
+                    db rules job-pull needed)}))
+
+(comment
+  (let [db     (d/db ets.jobs.search.core/conn)]
+    (achievement-info db :energy-from-above)
+    )
+  ; elko -> cm_min_qry
+  )
+
 #_(defachievement energy-from-above
   "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."
   {::pco/input [{:job/cargo     [:cargo/id]}
@@ -746,6 +784,9 @@
     :name    "Idaho"
     :cheevos [ach-grown-in-idaho
               ach-along-the-snake-river]}
+   {:group   :state/co
+    :name    "Colorado"
+    :cheevos [ach-energy-from-above]}
    {:group   :state/wy
     :name    "Wyoming"
     :cheevos [ach-big-boy

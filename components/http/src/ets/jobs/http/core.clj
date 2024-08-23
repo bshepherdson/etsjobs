@@ -154,6 +154,9 @@
 (defmethod progress-block :along-the-snake-river [_ctx progress]
   (progress-list snake-river-pairs progress))
 
+(defmethod progress-block :energy-from-above [_ctx progress]
+  (progress-list identity progress))
+
 (defn achievement-section [ctx {:keys [id name desc]}]
   ; Sorting by descending time-to-live.
   (let [{:keys [jobs progress]} (achivement-info ctx id)
