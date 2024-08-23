@@ -33,9 +33,11 @@
 (def job-headings
   ["Expires in" "Origin" "Sender" "Destination" "Recipient" "Distance" "Cargo"])
 
-(defn expiry-time [total-mins]
-  (let [hours (quot total-mins 60)
-        mins  (mod  total-mins 60)]
+(defn expiry-time [ctx expires-at]
+  (let [time       (-> ctx :time :cest :game)
+        total-mins (- expires-at time)
+        hours      (quot total-mins 60)
+        mins       (mod  total-mins 60)]
     (format "%2dh%02d" hours mins)))
 
 (def adr-symbols
@@ -83,13 +85,14 @@
   ;; TODO: Bring back the flags for ETS2.
   #_[:span.flag "flag"]])
 
-(defn job-block [_ctx jobs]
+(defn job-block [ctx jobs]
   (html
     [:table
      [:tr (for [h job-headings] [:th h])]
-     (for [{:job/keys [cargo distance-km source target]} jobs]
+     (for [{:offer/keys [expiration-time]
+            :job/keys   [cargo distance-km source target]} jobs]
        [:tr
-        [:td {:style "text-align: right"} (expiry-time 300 #_expires-in-mins)] ;; XXX: debugging
+        [:td {:style "text-align: right"} (expiry-time ctx expiration-time)] ;; XXX: debugging
         (city-td (:location/city source))
         [:td (:company/name (:location/company source))]
         (city-td (:location/city target))
@@ -107,8 +110,8 @@
   (sort-by #(- time (:offer/expiration-time %)) jobs))
 
 (defmulti ^:private progress-block
- (fn [_ctx progress]
-  (:type progress)))
+ (fn [_ctx {:keys [special type]}]
+  (or special type)))
 
 (defn- progress-frame [inner]
  (html
@@ -142,10 +145,15 @@
     (str completed " / " total)]
    (str completed " / " total)]))
 
-;; START HERE: Output is ready, at least far enough to be getting along with.
-;; Clean up the codebase, at least for ATS, and get the linter under control.
-;; Then reformat everything it broke and commit it to git.
-;; Then add the rest of the achievements.
+(def ^:private snake-river-pairs
+  {["kennewick" "lewiston"]     "Kennewick - Lewiston"
+   ["boise" "twin_falls"]       "Boise - Twin Falls"
+   ["twin_falls" "pocatello"]   "Twin Falls - Pocatello"
+   ["pocatello"  "idaho_falls"] "Pocatello - Idaho Falls"})
+
+(defmethod progress-block :along-the-snake-river [_ctx progress]
+  (progress-list snake-river-pairs progress))
+
 (defn achievement-section [ctx {:keys [id name desc]}]
   ; Sorting by descending time-to-live.
   (let [{:keys [jobs progress]} (achivement-info ctx id)
