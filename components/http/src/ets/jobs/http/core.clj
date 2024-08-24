@@ -136,6 +136,9 @@
 (defmethod progress-block :set/company [_ctx progress]
  (progress-list (comp :company/name :location/company) progress))
 
+(defmethod progress-block :set/strings [_ctx progress]
+  (progress-list identity progress))
+
 (defmethod progress-block :count [_ctx {:keys [completed total]}]
  (progress-frame
   [:div
@@ -153,9 +156,6 @@
 
 (defmethod progress-block :along-the-snake-river [_ctx progress]
   (progress-list snake-river-pairs progress))
-
-(defmethod progress-block :energy-from-above [_ctx progress]
-  (progress-list identity progress))
 
 (defn achievement-section [ctx {:keys [id name desc]}]
   ; Sorting by descending time-to-live.

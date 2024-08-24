@@ -104,24 +104,36 @@
               [?cargo :cargo/heavy? true]]
             db)))
 
-(defmethod achievement-info :i-thought-this-should-be-heavy
-  [db _cheevo]
-  (let [heavies (heavy-cargoes db) 
-        done    (d/q '[:find [?cargo ...]
-                       :in $ % :where
-                       [?cargo :cargo/heavy? true]
-                       [?job   :job/cargo    ?cargo]
-                       (delivery? ?job)]
-                     db rules)
-        needed  (remove (set done) heavies)]
+(defn- deliver-cargoes [db cargo-rule job-rule]
+  (let [dc-rules (conj rules cargo-rule job-rule)
+        cargoes  (d/q '[:find [?cargo ...]
+                        :in $ % :where
+                        (cargo-rule ?cargo)]
+                      db dc-rules)
+        done     (d/q '[:find [?cargo ...]
+                        :in $ % :where
+                        (cargo-rule ?cargo)
+                        (job-rule ?job ?cargo)
+                        (delivery? ?job)]
+                      db dc-rules)
+        needed   (remove (set done) cargoes)]
     {:progress {:type      :set/cargo
                 :completed (d/pull-many db cargo-pull done)
                 :needed    (d/pull-many db cargo-pull needed)}
-     :jobs     (d/q '[:find [(pull ?job spec) ...]
-                      :in $ % spec [?needed ...] :where
-                      [?job :job/cargo ?needed]
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [?needed ...] :where
+                      (job-rule ?job ?needed)
                       (offer? ?job)]
-                    db rules job-pull needed)}))
+                    db dc-rules job-pull needed)}))
+
+(defmethod achievement-info :i-thought-this-should-be-heavy
+  [db _cheevo]
+  (deliver-cargoes
+    db
+    '[(cargo-rule ?cargo)
+      [?cargo :cargo/heavy? true]]
+    '[(job-rule ?job ?cargo)
+      [?job :job/cargo ?cargo]]))
 
 ;; Heavy, but not a Bull in a China Shop =====================================
 (def ^:private ach-heavy-but-not-a-bull-in-a-china-shop
@@ -159,12 +171,13 @@
                       db rules job-pull thousand-miles-in-km))}))
 
 ;; Bigger Cargo, Bigger Profit ===============================================
-;; TODO: Implement this one. It's a pain to check its status.
+;; TODO: Implement this one? It's a pain to implement here but isn't hard to
+;; search for in-game. Also I already have it unlocked.
 #_(def ^:private ach-bigger-cargo-bigger-profit
   {:id      :bigger-cargo-bigger-profit
    :name    "Bigger Cargo, Bigger Profit"
    :group   :group/heavy-cargo
-   :desc    "Earn $100,000 on 5 consecutive heavy cargo deliveries."})
+   :desc    "Earn $100,000 on 5 CONSECUTIVE heavy cargo deliveries. (Job list shows plausible jobs worth at least $18k.) "})
 
 #_(defmethod achievement-progress :bigger-cargo-bigger-profit
   [db _cheevo]
@@ -302,11 +315,14 @@
 ;; ===========================================================================
 
 (defn- counted-deliveries
-  [db total rule]
-  (let [sd-rules (conj rules rule)
-        matches  (or (d/q '[:find (count ?job) .
+  ([db total match-rule]
+   (counted-deliveries db total match-rule '[(delivery-rule ?job)
+                                             (match ?job)]))
+  ([db total match-rule delivery-rule]
+   (let [sd-rules (conj rules match-rule delivery-rule)
+         matches  (or (d/q '[:find (count ?job) .
                              :in $ % :where
-                             (match ?job)
+                             (delivery-rule ?job)
                              (delivery? ?job)]
                            db sd-rules)
                       0)]
@@ -319,18 +335,22 @@
                          :in $ % pattern :where
                          (match ?job)
                          (offer? ?job)]
-                       db sd-rules job-pull))}))
+                       db sd-rules job-pull))})))
 
-(defn- single-delivery [db rule]
-  (counted-deliveries db 1 rule))
+(defn- single-delivery
+  ([db match-rule]
+   (counted-deliveries db 1 match-rule))
+  ([db match-rule delivery-rule]
+   (counted-deliveries db 1 match-rule delivery-rule)))
 
 (defn- single-delivery-to
   [db company-slug]
-  (let [base-rule '[(match ?job)
-                    [?company :company/ident    "dummy"]
-                    [?loc     :location/company ?company]
-                    [?job     :job/target       ?loc]]]
-    (single-delivery db (assoc-in base-rule [1 2] company-slug))))
+  (let [base-rule (assoc-in '[(match ?job)
+                              [?company :company/ident    "dummy"]
+                              [?loc     :location/company ?company]
+                              [?job     :job/target       ?loc]]
+                            [1 2] company-slug)]
+    (single-delivery db base-rule)))
 
 ;; Sky Harbor ================================================================
 (def ^:private ach-sky-harbor
@@ -606,20 +626,17 @@
    :group :state/co
    :desc  "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."})
 
-(defmethod achievement-info :energy-from-above [db _cheevo]
-  (let [required   (d/q '[:find ?cargo ?loc :where
-                          [?loc  :location/company [:company/ident "vp_epw_sit"]]
-                          [?loc  :location/city    ?city]
-                          [?city :city/state       :state/co]
-                          [(ground ["windml_eng" "windml_tube"]) [?cargo-slug ...]]
-                          [?cargo :cargo/ident ?cargo-slug]]
-                        db)
+(defn- multiple-cargoes-and-locs [db new-rules]
+  (let [mc-rules   (into rules new-rules)
+        required   (d/q '[:find ?cargo ?loc :in $ % :where
+                          (loc-rule ?loc)
+                          (cargo-rule ?cargo)]
+                        db mc-rules)
         deliveries (d/q '[:find ?cargo ?loc
                           :in $ % [[?cargo ?loc]] :where
-                          [?job :job/cargo     ?cargo]
-                          [?job :job/target    ?loc]
+                          (job-rule ?job ?cargo ?loc)
                           (delivery? ?job)]
-                        db rules required)
+                        db mc-rules required)
         needed     (remove (set deliveries) required)
         details    (fn [pairs]
                      (d/q '[:find [?str ...]
@@ -629,54 +646,63 @@
                             [?city  :city/name     ?city-name]
                             [(str ?city-name " - " ?cargo-name) ?str]]
                           db pairs))]
-    {:progress {:type      :special
-                :special   :energy-from-above
+    {:progress {:type      :set/strings
                 :completed (details deliveries)
                 :needed    (details needed)}
      :jobs     (d/q '[:find [(pull ?job pattern) ...]
-                      :in $ % pattern [[?cargo ?tgt]] :where
-                      [?job :job/cargo  ?cargo]
-                      [?job :job/target ?tgt]
+                      :in $ % pattern [[?cargo ?loc]] :where
+                      (job-rule ?job ?cargo ?loc)
                       (offer? ?job)]
-                    db rules job-pull needed)}))
+                    db mc-rules job-pull needed)}))
+
+(defmethod achievement-info :energy-from-above [db _cheevo]
+  (multiple-cargoes-and-locs
+    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "windml_eng"]]
+         [(cargo-rule ?cargo) [?cargo :cargo/ident "windml_tube"]]
+         [(loc-rule ?loc)
+          [?loc  :location/company [:company/ident "vp_epw_sit"]]
+          [?loc  :location/city    ?city]
+          [?city :city/state       :state/co]]
+         [(job-rule ?job ?cargo ?loc)
+          [?job :job/cargo  ?cargo]
+          [?job :job/target ?loc]]]))
 
 (comment
   (let [db     (d/db ets.jobs.search.core/conn)]
     (achievement-info db :energy-from-above)
     )
-  ; elko -> cm_min_qry
   )
 
-#_(defachievement energy-from-above
-  "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."
-  {::pco/input [{:job/cargo     [:cargo/id]}
-                {:job/destination [:company/id :country/id]}]}
-  (fn [_env {{cargo       :cargo/id}   :job/cargo
-             {destination :country/id
-              recipient   :company/id} :job/destination}]
-    {:job.cheevo/energy-from-above
-     (boolean (and (#{"windml_eng" "windml_tube"} cargo)
-                   (= destination "CO")
-                   (= recipient "vp_epw_sit")))}))
+;; Gold Rush =================================================================
+(def ^:private ach-gold-rush
+  {:id    :gold-rush
+   :name  "Gold Rush"
+   :group :state/co
+   :desc  "Deliver 10 loads to or from the NAMIQ company at the gold mine in Colorado."})
 
-(defn- co-mining [{state   :country/id
-                   company :company/id}]
-  (boolean (and (#{"nmq_min_qry" "nmq_min_qrys"} company)
-                (= "CO" state))))
+(defmethod achievement-info :gold-rush [db _cheevo]
+  (counted-deliveries db 10 '[(match ?job)
+                              [(ground ["nmq_min_qry" "nmq_min_qrys"]) [?slug ...]]
+                              [?cmp  :company/ident    ?slug]
+                              [?loc  :location/company ?cmp]
+                              [?loc  :location/city    ?city]
+                              [?city :city/state       :state/co]
+                              (or [?job :job/source ?loc]
+                                  [?job :job/target ?loc])]))
 
-#_(defachievement gold-rush
-  "Deliver 10 loads to or from the NAMIQ company at the gold mine in Colorado."
-  {::pco/input [{:job/origin      [:company/id :country/id]}
-                {:job/destination [:company/id :country/id]}]}
-  (fn [_env {:job/keys [origin destination]}]
-    {:job.cheevo/gold-rush (or (co-mining origin)
-                               (co-mining destination))}))
+;; Up and Away ===============================================================
+;; TODO: This one is also showing as done 10/10 on Steam but 9/10 for this profile.
+;; Probably a different profile did one too.
+(def ^:private ach-up-and-away
+  {:id    :up-and-away
+   :name  "Up and Away"
+   :group :state/co
+   :desc  "Complete 10 delivery to Denver airport."})
 
-#_(defachievement up-and-away
-  "Complete 10 delivery to Denver airport."
-  {::pco/input [{:job/destination [:company/id]}]}
-  (fn [_env {{recipient :company/id} :job/destination}]
-    {:job.cheevo/up-and-away (= "aport_den" recipient)}))
+(defmethod achievement-info :up-and-away [db _cheevo]
+  (counted-deliveries db 10 '[(match ?job)
+                              [?loc :location/company [:company/ident "aport_den"]]
+                              [?job :job/target       ?loc]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -691,35 +717,21 @@
    :group :state/wy
    :desc  "Deliver train parts, tamping machine and rails to or from the rail yard in Cheyenne."})
 
+;; TODO: Test this once some jobs are available.
 (defmethod achievement-info :big-boy
   [db _cheevo]
-  (let [slugs   ["train_part" "tamp_machine" "rails"]
-        cargoes (d/q '[:find [?cargo ...]
-                       :in $ [?slug ...] :where
-                       [?cargo :cargo/ident ?slug]]
-                     db slugs)
-        done    (d/q '[:find [?cargo ...]
-                       :in $ % [?slug ...] [?dir ...] :where
-                       [?loc   :location/city    [:city/ident "cheyenne"]]
-                       [?loc   :location/company [:company/ident "aml_rail_str"]]
-                       [?job   ?dir              ?loc]
-                       [?job   :job/cargo        ?cargo]
-                       [?cargo :cargo/ident      ?slug]
-                       (delivery? ?job)
-                       [?cargo :cargo/name       ?cargo-name]]
-                     db rules slugs [:job/source :job/target])
-        needed  (remove (set done) cargoes)]
-    {:progress {:type      :set/cargo
-                :completed (d/pull-many db cargo-pull done)
-                :needed    (d/pull-many db cargo-pull needed)}
-     :jobs     (d/q '[:find [(pull ?job pattern) ...]
-                      :in $ % pattern [?cargo ...] [?dir ...] :where
-                      [?job   :job/cargo ?cargo]
-                      (offer? ?job)
-                      [?job   ?dir       ?loc]
-                      [?loc   :location/city    [:city/ident "cheyenne"]]
-                      [?loc   :location/company [:company/ident "aml_rail_str"]]]
-                    db rules job-pull needed [:job/source :job/target])}))
+  (deliver-cargoes
+    db
+    '[(cargo-rule ?cargo)
+      (or [?cargo :cargo/ident "train_part"]
+          [?cargo :cargo/ident "tamp_machine"]
+          [?cargo :cargo/ident "rails"])]
+    '[(job-rule ?job ?cargo)
+      [?job :job/cargo ?cargo]
+      [?loc :location/city [:city/ident "cheyenne"]]
+      [?loc :location/company [:company/ident "aml_rail_str"]]
+      (or [?job :job/source ?loc]
+          [?job :job/target ?loc])]))
 
 ;; Buffalo Bill ==============================================================
 (def ^:private ach-buffalo-bill
@@ -750,6 +762,115 @@
                       (buffalo-bill? ?job)
                       (offer? ?job)]
                     db buffalo-bill-rules job-pull)}))
+
+
+;; ===========================================================================
+;; |                                                                         |
+;; |                                Montana                                  |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Zero Waste ================================================================
+;; This one is actually modelled as two achievements, since the two parts are independent.
+(def ^:private ach-zero-waste-bins
+  {:id    :zero-waste-bins
+   :name  "Zero Waste (bins)"
+   :group :state/mt
+   :desc  "Deliver 10 Dumpster Bins or Paper Waste to Waste Transfer Stations in Montana. "})
+
+(defmethod achievement-info :zero-waste-bins [db _cheevo]
+  (counted-deliveries db 10 '[(match ?job)
+                              (or [?cargo :cargo/ident "dumpster"]
+                                  [?cargo :cargo/ident "waste_paper"])
+                              [?job  :job/cargo     ?cargo]
+                              [?job  :job/target    ?tgt]
+                              [?tgt  :location/city ?city]
+                              [?city :city/state    :state/mt]
+                              [?tgt  :location/company [:company/ident "mwm_wst_whs"]]]))
+
+(def ^:private ach-zero-waste-truck
+  {:id    :zero-waste-truck
+   :name  "Zero Waste (truck)"
+   :group :state/mt
+   :desc  "Deliver at least one Garbage Truck to or from anywhere in Montana."})
+
+;; TODO: Test this one - no jobs appear right now.
+(defmethod achievement-info :zero-waste-truck [db _cheevo]
+  (single-delivery db '[(match ?job)
+                        [?cargo :cargo/ident   "garbage_truck"]
+                        [?job   :job/cargo     ?cargo]
+                        [?city  :city/state    :state/mt]
+                        [?loc   :location/city ?city]
+                        (or [?job :job/source ?loc]
+                            [?job :job/target ?loc])]))
+
+;; Power On! =================================================================
+;; TODO: Test this one - no jobs appear, nothing completed so far.
+(def ^:private ach-power-on
+  {:id    :power-on
+   :name  "Power On!"
+   :group :state/mt
+   :desc  "Deliver both Circuit Breakers and Utility Poles to the electric substations in Butte, Glasgow and Havre."})
+
+(defmethod achievement-info :power-on [db _cheevo]
+  (multiple-cargoes-and-locs
+    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "circuit_brk"]]
+         [(cargo-rule ?cargo) [?cargo :cargo/ident "util_pole"]]
+         [(loc-rule ?loc)
+          [?loc :location/company [:company/ident "frd_epw_sit"]]
+          [?loc :location/city ?city]
+          (or [?city :city/ident "butte"]
+              [?city :city/ident "glasgow_mt"]
+              [?city :city/ident "havre"])]
+         [(job-rule ?job ?cargo ?loc)
+          [?job :job/cargo ?cargo]
+          [?job :job/target ?loc]]]))
+
+;; Major Miner ===============================================================
+;; Split into three, since there's three unrelated tasks here.
+(def ^:private ach-major-miner-machinery
+  {:id    :major-miner-machinery
+   :name  "Major Miner - Machinery to Coal Mine"
+   :group :state/mt
+   :desc  "PERFECT delivery to Bull Mountains coal mine north of Billings."})
+
+(defn- major-miner [db direction company cities cargo]
+  (single-delivery
+    db
+    (into ['(match ?job)
+           ['?job  direction '?tgt]
+           ['?tgt  :location/company [:company/ident company]]
+           [(list  'ground cities)   '[?city-slug ...]]
+           '[?tgt  :location/city    ?city]
+           '[?city :city/ident       ?city-slug]]
+          cargo)
+    '[(delivery-rule ?job)
+      (match    ?job)
+      (perfect? ?job)]))
+
+(defmethod achievement-info :major-miner-machinery [db _cheevo]
+  (major-miner db :job/target "nmq_min_qry" ["bozeman"] nil))
+
+(def ^:private ach-major-miner-silane
+  {:id    :major-miner-silane
+   :name  "Major Miner - Silane gas"
+   :group :state/mt
+   :desc  "PERFECT delivery of Silane from the silane gas factory."})
+
+(defmethod achievement-info :major-miner-silane [db _cheevo]
+  (major-miner db :job/source "chm_che_plns" ["butte"]
+               '[[?job :job/cargo [:cargo/ident "silane"]]]))
+
+(def ^:private ach-major-miner-talc
+  {:id    :major-miner-talc
+   :name  "Major Miner - Talc"
+   :group :state/mt
+   :desc  "PERFECT delivery of Talc Powder from the talc factory."})
+
+(defmethod achievement-info :major-miner-talc [db _cheevo]
+  (major-miner db :job/source "nmq_min_plnt" ["bozeman" "butte"]
+               '[[?job :job/cargo [:cargo/ident "talc_pwdr"]]]))
+
 
 (def achievement-groups
   [{:group   :state/ca
@@ -786,11 +907,21 @@
               ach-along-the-snake-river]}
    {:group   :state/co
     :name    "Colorado"
-    :cheevos [ach-energy-from-above]}
+    :cheevos [ach-energy-from-above
+              ach-gold-rush
+              ach-up-and-away]}
    {:group   :state/wy
     :name    "Wyoming"
     :cheevos [ach-big-boy
               ach-buffalo-bill]}
+   {:group   :state/mt
+    :name    "Montana"
+    :cheevos [ach-zero-waste-bins
+              ach-zero-waste-truck
+              ach-power-on
+              ach-major-miner-machinery
+              ach-major-miner-silane
+              ach-major-miner-talc]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
