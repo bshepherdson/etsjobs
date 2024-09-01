@@ -41,6 +41,17 @@
 ;; - School Bus Capital: 5 Bus Hoods to + 5 School Buses from the factory in Tulsa
 ;; - Grain of Salt: 6 deliveries from Hutchinson Salt Mine; at least 2 to a Food Factory
 
+;; Special Transport cheevos
+;; - Size Matters: 1 delivery, no damage, on time
+;;   - Implied by the others and trivial to search for, ignore this.
+;; - Go Big or Go Home: All routes - is there a list somewhere I can access?
+;; - Big in America!: Deliver all cargoes
+;; - Perfect deliveries of specific cargoes:
+;;   - Get (to) the Chopper!
+;;   - One, Two, Three, Breathe! (air conditioner)
+;;   - Home Sweet Home: Turnkey house
+;; - Your Dumper Has Arrived!: all three parts of a huge dumper  (NOT perfect!)
+
 (def ^:private job-pull
   (let [endpoint [{:location/city    [:city/ident :city/name {:city/state [:db/ident]}]}
                   {:location/company [:company/ident :company/name]}]]
@@ -797,12 +808,25 @@
 ;; TODO: Test this one - no jobs appear right now.
 (defmethod achievement-info :zero-waste-truck [db _cheevo]
   (single-delivery db '[(match ?job)
-                        [?cargo :cargo/ident   "garbage_truck"]
+                        [?cargo :cargo/ident   "garbage_trck"]
                         [?job   :job/cargo     ?cargo]
                         [?city  :city/state    :state/mt]
                         [?loc   :location/city ?city]
                         (or [?job :job/source ?loc]
                             [?job :job/target ?loc])]))
+
+(comment
+  (d/q '[:find [(pull ?job [:*]) ...]
+         :in $ % :where
+         [?cargo :cargo/ident   "garbage_trck"]
+         [?job   :job/cargo     ?cargo]
+         [?city  :city/state    :state/mt]
+         [?loc   :location/city ?city]
+         (or [?job :job/source ?loc]
+             [?job :job/target ?loc])]
+       (d/db ets.jobs.search.core/conn)
+       rules)
+  )
 
 ;; Power On! =================================================================
 ;; TODO: Test this one - no jobs appear, nothing completed so far.
@@ -926,129 +950,3 @@
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
               ach-should-be-heavy]}])
-
-#_(def ^:private achievements-list
-  [;; California
-   {:cheevo/id    :sea-dog
-    :cheevo/name  "Sea Dog"
-    :cheevo/region {:region/id "CA"}
-    :cheevo/desc   "Deliver cargo to a port in Oakland and port in San Francisco."
-    :cheevo/flag   :job.cheevo/sea-dog}
-   {:cheevo/id    :cheers
-    :cheevo/name  "Cheers"
-    :cheevo/region {:region/id "CA"}
-    :cheevo/desc   "Deliver cargo from all 3 vineyards in California."
-    :cheevo/flag   :job.cheevo/cheers}
-
-   ;; Nevada
-   {:cheevo/id    :gold-fever
-    :cheevo/name  "Gold Fever"
-    :cheevo/region {:region/id "NV"}
-    :cheevo/desc   "Deliver cargo to both quarries in Nevada."
-    :cheevo/flag   :job.cheevo/gold-fever}
-
-   ;; Arizona
-   {:cheevo/id    :sky-harbor
-    :cheevo/name  "Sky Harbor"
-    :cheevo/region {:region/id "AZ"}
-    :cheevo/desc   "Deliver cargo to the Phoenix Airport."
-    :cheevo/flag   :job.cheevo/sky-harbor}
-
-   ;; New Mexico
-   {:cheevo/id    :sky-delivery
-    :cheevo/name  "Sky Delivery"
-    :cheevo/region {:region/id "NM"}
-    :cheevo/desc   "Deliver cargo to An-124 depot."
-    :cheevo/flag   :job.cheevo/sky-delivery}
-   
-   ;; Oregon
-   {:cheevo/id    :lumberjack
-    :cheevo/name  "Lumberjack"
-    :cheevo/region {:region/id "OR"}
-    :cheevo/desc   "Deliver cargo from all timber harvest sites in Oregon."
-    :cheevo/flag   :job.cheevo/lumberjack}
-   {:cheevo/id    :cabbage-to-cabbage
-    :cheevo/name  "Cabbage to Cabbage"
-    :cheevo/region {:region/id "OR"}
-    :cheevo/desc   "Carry cabbage (vegetables) over Cabbage Hill."
-    :cheevo/flag   :job.cheevo/cabbage-to-cabbage}
-
-   ;; Washington
-   {:cheevo/id    :steel-wings
-    :cheevo/name  "Steel Wings"
-    :cheevo/region {:region/id "WA"}
-    :cheevo/desc   "Deliver to an aerospace company in Washington."
-    :cheevo/flag   :job.cheevo/steel-wings}
-   {:cheevo/id    :keep-sailing
-    :cheevo/name  "Keep Sailing"
-    :cheevo/region {:region/id "WA"}
-    :cheevo/desc   "Deliver a boat to a marina in Washington."
-    :cheevo/flag   :job.cheevo/keep-sailing}
-   {:cheevo/id    :terminal-terminus
-    :cheevo/name  "Terminal Terminus"
-    :cheevo/region {:region/id "WA"}
-    :cheevo/desc   "Deliver to both port terminals in Washington."
-    :cheevo/flag   :job.cheevo/terminal-terminus}
-   {:cheevo/id    :over-the-top
-    :cheevo/name  "Over the Top"
-    :cheevo/region {:region/id "WA"}
-    :cheevo/desc   "Drive through the forest road to timber harvest in Bellingham."
-    :cheevo/flag   :job.cheevo/over-the-top}
-   
-   ;; Utah
-   {:cheevo/id    :this-one-is-mine
-    :cheevo/name  "This One is Mine"
-    :cheevo/region {:region/id "UT"}
-    :cheevo/desc   "Visit all mines and quarries in Utah."
-    :cheevo/flag   :job.cheevo/this-one-is-mine}
-   {:cheevo/id    :some-like-it-salty
-    :cheevo/name  "Some Like it Salty"
-    :cheevo/region {:region/id "UT"}
-    :cheevo/desc   "Take a job from each branch of each company located in Salt Lake City."
-    :cheevo/flag   :job.cheevo/some-like-it-salty}
-   {:cheevo/id    :pump-it-up
-    :cheevo/name  "Pump It Up"
-    :cheevo/region {:region/id "UT"}
-    :cheevo/desc   "Deliver 5 frac tank trailers to any oil drilling site in Utah."
-    :cheevo/flag   :job.cheevo/pump-it-up}
-
-   ;; Idaho
-   {:cheevo/id    :grown-in-idaho
-    :cheevo/name  "Grown in Idaho"
-    :cheevo/region {:region/id "ID"}
-    :cheevo/desc   "Complete 5 deliveries of potatoes from Idaho farms."
-    :cheevo/flag   :job.cheevo/grown-in-idaho}
-   {:cheevo/id    :along-the-snake-river
-    :cheevo/name  "Along the Snake River"
-    :cheevo/region {:region/id "ID"}
-    :cheevo/desc   "Complete PERFECT deliveries between Kennewick-Lewiston, Boise-Twin Falls, Twin Falls-Pocatello, Pocatello-Idaho Falls; any order or direction."
-    :cheevo/flag   :job.cheevo/along-the-snake-river}
-   
-   ;; Colorado
-   {:cheevo/id    :energy-from-above
-    :cheevo/name  "Energy From Above"
-    :cheevo/region {:region/id "CO"}
-    :cheevo/desc   "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."
-    :cheevo/flag   :job.cheevo/energy-from-above}
-   {:cheevo/id    :gold-rush
-    :cheevo/name  "Gold Rush"
-    :cheevo/region {:region/id "CO"}
-    :cheevo/desc   "Deliver 10 loads to or from the NAMIQ company at the gold mine in Colorado."
-    :cheevo/flag   :job.cheevo/gold-rush}
-   {:cheevo/id    :up-and-away
-    :cheevo/name  "Up and Away"
-    :cheevo/region {:region/id "CO"}
-    :cheevo/desc   "Complete 10 delivery to Denver airport."
-    :cheevo/flag   :job.cheevo/up-and-away}
-
-   ;; Wyoming
-   {:cheevo/id    :big-boy
-    :cheevo/name  "Big Boy"
-    :cheevo/region {:region/id "WY"}
-    :cheevo/desc   "Deliver train parts, tamping machine and rails to or from the rail yard in Cheyenne."
-    :cheevo/flag   :job.cheevo/big-boy}
-   {:cheevo/id    :buffalo-bill
-    :cheevo/name  "Buffalo Bill"
-    :cheevo/region {:region/id "WY"}
-    :cheevo/desc   "Complete 10 PERFECT cattle deliveries to livestock auctions in Wyoming."
-    :cheevo/flag   :job.cheevo/buffalo-bill}])

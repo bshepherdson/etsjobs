@@ -9,23 +9,7 @@
 (def ^:private state-schema
  [{:db/ident        :state/name
    :db/valueType    :db.type/string
-   :db/cardinality  :db.cardinality/one}
-  
-  {:db/ident :state/az, :state/name "Arizona"}
-  {:db/ident :state/ca, :state/name "California"}
-  {:db/ident :state/co, :state/name "Colorado"}
-  {:db/ident :state/id, :state/name "Idaho"}
-  {:db/ident :state/ks, :state/name "Kansas"}
-  {:db/ident :state/mt, :state/name "Montana"}
-  {:db/ident :state/ne, :state/name "Nebraska"}
-  {:db/ident :state/nv, :state/name "Nevada"}
-  {:db/ident :state/nm, :state/name "New Mexico"}
-  {:db/ident :state/ok, :state/name "Oklahoma"}
-  {:db/ident :state/or, :state/name "Oregon"}
-  {:db/ident :state/tx, :state/name "Texas"}
-  {:db/ident :state/ut, :state/name "Utah"}
-  {:db/ident :state/wa, :state/name "Washington"}
-  {:db/ident :state/wy, :state/name "Wyoming"}])
+   :db/cardinality  :db.cardinality/one}])
 
 (def ^:private city-schema
  [{:db/ident        :city/ident
@@ -136,15 +120,41 @@
   {:db/ident        :job.type/on_compn}
   {:db/ident        :job.type/spec_oversize}
 
+  ;; Special jobs have a route ID, a string slug defined by the game.
   {:db/ident        :job.special/route
    :db/valueType    :db.type/ref
    :db/cardinality  :db.cardinality/one
    :db/doc          "Ref to the unique index for the special route."}
+  
+  ;; Special Transport routes are a separate table. These are indexed by the
+  ;; :route.special/name, a string slug like "src_dst1".
   {:db/ident        :route.special/name
    :db/valueType    :db.type/string
    :db/cardinality  :db.cardinality/one
    :db/unique       :db.unique/identity
    :db/doc          "Game-defined slug for a given special route."}
+  {:db/ident        :route.special/source-city
+   :db/valueType    :db.type/ref
+   :db/cardinality  :db.cardinality/one}
+  {:db/ident        :route.special/target-city
+   :db/valueType    :db.type/ref
+   :db/cardinality  :db.cardinality/one}
+
+  ;; Special job offers are in a separate table, and referenced by name rather
+  ;; than giving their details directly.
+  {:db/ident        :offer.special/name
+   :db/valueType    :db.type/string
+   :db/cardinality  :db.cardinality/one
+   :db/unique       :db.unique/identity
+   :db/doc          "Game-defined slug for a special transport job *offer*."}
+  {:db/ident        :offer.special/cargo
+   :db/valueType    :db.type/ref
+   :db/cardinality  :db.cardinality/one
+   :db/doc          "Ref to the cargo carried by this special job."}
+  {:db/ident        :offer.special/route
+   :db/valueType    :db.type/ref
+   :db/cardinality  :db.cardinality/one
+   :db/doc          "Ref to the special route for this Special Transport job offer."}
 
   ;; Specific to job offers
   {:db/ident        :offer/expiration-time

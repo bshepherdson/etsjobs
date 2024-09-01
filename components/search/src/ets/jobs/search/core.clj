@@ -18,7 +18,7 @@
 
 (defn- profile-info [dir]
   (let [basics  (->> (File. dir "profile.sii")
-                     decrypt/decode
+                     decrypt/decode-file
                      sii/parse-profile-basics)]
     (assoc basics :profile/dir dir :profile/id (.getName dir))))
 
@@ -66,7 +66,7 @@
   "Reads and parses the most recent savegame for the given profile."
   [game profile-id]
   (let [profile (profile-by-id game profile-id)
-        blocks  (-> profile latest-save decrypt/decode sii/parse-sii-raw)
+        blocks  (-> profile latest-save decrypt/decode-file sii/parse-sii-raw)
         economy (economy-block blocks)]
     {:db      (case game
                 #_#_:ets2 (ets2/ingest-sii blocks)
@@ -86,9 +86,74 @@
   ;; TODO: Delivery order matters! Some achievements are about consecutive jobs.
   (def conn (-> (profile-by-id :ats "42726164656E")
                 latest-save
-                decrypt/decode
+                decrypt/decode-file
                 sii/parse-sii-raw
                 ats/ingest-sii))
+  
+  (-> (profile-by-id :ats "42726164656E")
+      latest-save
+      decrypt/decode-file
+      #_sii/parse-sii-raw
+      #_ats/ingest-sii)
+  
+  (d/q '[:find [(pull ?job [:*]) ...] :where
+         [?job :job/type :job.type/spec_oversize]]
+       (d/db conn))
+
+  (def prof (-> (profile-by-id :ats "42726164656E")
+                latest-save
+                decrypt/decode-file
+                sii/parse-sii-raw
+                #_ats/ingest-sii))
+
+  (->> prof
+       (map (comp :name :sii/struct))
+       set
+       )
+  (->> prof
+       (filter (comp #{"oversize_offer"} :name :sii/struct))
+       (map :offer-data)
+       (take 5)
+       )
+
+  (->> prof
+       (filter (comp #{["spec_offer" "ovesize_10"]} :sii/block-id))
+       first
+       )
+
+  ;; 51 total currently.
+  ;; The total set is:
+  ;; - 13 from base
+  ;; - 3 from Arizona (16)
+  ;; - 6 from Colorado (22)
+  ;; - 4 from Idaho (26)
+  ;; - 5 from Montana (31)
+  ;; - 6 from New Mexico (37)
+  ;; - 3 from Oregen (40)
+  ;; - 3 from Utah (43)
+  ;; - 4 from Washington (47)
+  ;; - 4 from Wyoming (51)
+
+  ;; So they seem to all be in set of offers, but I can't count on that.
+
+  {:delivery/cargo-mass-kg 35000.0,
+   :delivery/start-time 281287,
+   :delivery/end-time 281797,
+   :delivery/parking-difficulty 1,
+   :job.special/route #:db{:id 3515},
+   :delivery/profit 12247,
+   :job/cargo #:db{:id 224},
+   :delivery/fines 1800,
+   :delivery/damage-ratio 0.0,
+   :job/type #:db{:id 46},
+   :delivery/xp 535,
+   :job/urgency 1,
+   :job/distance-km 206,
+   :delivery/remaining-time 3730,
+   :db/id 1501,
+   :delivery/company-truck? false,
+   :delivery/index 353,
+   :sii/block-id 105553121447584}
 
   ;; ATS achievements - Track ================================================
   ;; Sea Dog - Deliver cargo to a port in Oakland and a port in SF - Track

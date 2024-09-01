@@ -81,14 +81,15 @@
     (io/copy is os)
     (.toByteArray os)))
 
-(defn decode [filename]
-  (-> filename
-      binary-slurp
+(defn decode [^ByteBuffer buf]
+  (-> buf
       decrypt
       inflate
       (ByteBuffer/wrap)
       (.order ByteOrder/LITTLE_ENDIAN)))
 
+(defn decode-file [filename]
+  (-> filename binary-slurp decode))
 
 ; Header: 
 ; signature  u32, one of the above values.

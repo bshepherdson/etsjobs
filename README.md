@@ -74,3 +74,8 @@ There are four main lines of future work:
   are not practical because you're far away, or you're close but there's hardly
   any time left.
 
+## Dev Guide
+
+To extract SCS bundles on Mac, use the `Run with Options` in Crossover to run the
+`scs_packer`, which I configured to have its working directory be ~/clojure/etsjobs/scs.
+So run it with `extract ../core/dlc_foo.scs -root foo` to output to that directory.

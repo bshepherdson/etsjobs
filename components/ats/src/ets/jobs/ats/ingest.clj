@@ -102,8 +102,7 @@
 
          ;; And a bonus field for special transport routes.
          (when (not-empty route-name)
-           {:job.special/route {:db/id              (str "special_route__" route-name)
-                                :route.special/name route-name}}))])))
+           {:job.special/route {:route.special/name route-name}}))])))
 
 (defn- jobs-without-target [db]
   (d/q '[:find ?job :where

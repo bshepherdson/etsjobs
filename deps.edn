@@ -6,9 +6,6 @@
                    lambdaisland/kaocha    {:mvn/version "1.88.1376"}
                    integrant/repl         {:mvn/version "0.3.3"}
 
-                   parka/parka {:git/url "https://github.com/bshepherdson/parka.git"
-                                :sha     "d1340ce3cee02ca05f8cdeafcaefe36f6b681077"}
-
                    ; Polylith components
                    poly/ats         {:local/root "components/ats"}
                    poly/database    {:local/root "components/database"}
@@ -16,6 +13,7 @@
                    ;poly/ets2        {:local/root "components/ets2"}
                    poly/files       {:local/root "components/files"}
                    poly/http        {:local/root "components/http"}
+                   poly/scs         {:local/root "components/scs"}
                    poly/search      {:local/root "components/search"}
                    poly/sii         {:local/root "components/sii"}
 
@@ -32,7 +30,6 @@
                     :ns-default build}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]
-                   :extra-deps {polyfy/polylith {:mvn/version "0.2.19"}
-                                #_{:git/url   "https://github.com/polyfy/polylith"
-                                 :sha       "20223297d6ed39ad3c3ed960410dea908c58b5ed"
-                                 :deps/root "projects/poly"}}}}}
+                   :extra-deps {polyfy/polylith {:git/url   "https://github.com/polyfy/polylith"
+                                                 :sha       "44f5ecbce02eb345c01e9bd39058b922df47c8df"
+                                                 :deps/root "projects/poly"}}}}}

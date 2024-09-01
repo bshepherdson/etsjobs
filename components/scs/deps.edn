@@ -1,0 +1,6 @@
+{:paths   ["src" "resources" "target/classes"]
+ :deps    {org.clj-commons/gloss {:mvn/version "0.3.6"}}
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps {}}
+           :build {:deps {io.github.clojure/tools.build {:mvn/version "0.10.4"}}
+                   :ns-default build}}}
