@@ -9,6 +9,7 @@
    "nc" "nd" "oh" "ok"   "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "vt" "va" "wa"
    "wv" "wi" "wy" "arizona" "nevada"])
 
+;; TODO: Parse these from def.scs/def/country.sii; straightforward.
 (def ^:private sii-countries-to-states
   {"alabama"        :state/al
    "alaska"         :state/ar
@@ -189,6 +190,8 @@
     (let [m (reduce (partial merge-with concat) {} (read-game-files))]
       (into [] cat [(:cities m) (:companies m) (:cargo m)]))))
 
+;; TODO: Parse cargoes from SCS files instead of hard-coding.
+;; The tricky part is the :cargo/heavy? bit, and maybe their English names?
 (def ^:private cargoes
   "List of cargo data for ATS."
   [{:cargo/ident "aircraft_eng"  :cargo/name "Aircraft Engine"}

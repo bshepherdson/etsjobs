@@ -35,7 +35,8 @@
 
     String         = <'\"'> #'[^\"]*' <'\"'>
     Float          = #'-?\\d+\\.\\d+'
-    Floats         = <LP> Float (<COMMA> Float)+ <RP>
+    <Number>       = Float | Signed
+    Floats         = <LP> Number (<COMMA> Number)+ <RP>
     Placement      = Fixeds <wsline> PlaceRight
     PlaceRight     = <LP> Unsigned <SEMI> Unsigned <COMMA> Unsigned <COMMA> Unsigned <COMMA> Unsigned <RP>
     Signed         = '-'? Unsigned
@@ -62,9 +63,11 @@
 (defmethod ->clojure :Unsigned [[_unsigned s]]
   (parse-long s))
 
-(defmethod ->clojure :Signed [[_signed sign [_unsigned s]]]
-  (cond-> (parse-long s)
-    (= sign "-") -))
+(defmethod ->clojure :Signed [[_signed x y]]
+  (if-let [[_unsigned s] y]
+    (cond-> (parse-long s)
+      (= x "-") -)
+    (->clojure x)))
 
 (defmethod ->clojure :Float [[_float s]]
   (parse-double s))
@@ -76,7 +79,7 @@
   (defmethod ->clojure tag [[_tag wrapped]]
     (->clojure wrapped)))
 
-(doseq [tag [:Attributes :Defs :Floats :Pointer]]
+(doseq [tag [:Attributes :Defs :Fixeds :Floats :Pointer]]
   (defmethod ->clojure tag [expr]
     (into [] (map ->clojure) (rest expr))))
 
@@ -129,6 +132,12 @@
        ->clojure))
 
 (comment
+  
+	(insta/parse
+    sii-parser
+    "secondary_time_zone_area[]: (-28000, -23335.8, -3349.8, 1100.0)"
+    #_"(-28000, -23335.8, -3349.8, 1100.0)"
+    :start :Attribute)
   (parse-text-file "scs/oversize/def/route.sii")
   (parse-text-file "scs/oversize/def/oversize_offer_data.sii"))
 

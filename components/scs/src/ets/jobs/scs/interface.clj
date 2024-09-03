@@ -61,13 +61,19 @@
                                  (codec/slurp scs (str dir "/" filename)))))))
 
 (comment
-  (def f (scs-file :ats "dlc_id.scs"))
+  #_(def f (scs-file :ats "base_vehicle.scs"))
+  (def f (scs-file :ats #_"def.scs"
+                   "dlc_freightliner_cascadia2019.scs"))
+  
 
-  (directory-listing f "def")
+  (directory-listing f "/def/vehicle/truck/freightliner.cascadia2019/engine")
 
-  (->> (scs->text-sii f "def/company.dlc_id.sii")
+  (println (codec/slurp f "def/country/california.sui"))
+  (->> (scs->text-sii f "/def/vehicle/truck/freightliner.cascadia2019/engine/dd16_600.sii")
        )
   *e
+  ;; T [lb.ft] = ( P [hp] x 5252 ) / N [RPM]
+  ;; P [hp] = T.N / 5252
   
   (println (scs-file-contents f "def/city/sacramento.sui"))
   (println (scs-file-contents f "def/city/sacramento.sui"))
