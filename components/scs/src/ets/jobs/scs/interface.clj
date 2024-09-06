@@ -3,6 +3,7 @@
  
   See [TruckLib docs](https://sk-zk.github.io/trucklib/master/docs/TruckLib.HashFs/hashfs.html)
   for reference."
+  (:refer-clojure :exclude [file-seq slurp])
   (:require
    [ets.jobs.files.interface :as files]
    [ets.jobs.sii.interface :as sii]
@@ -34,7 +35,7 @@
   [scs]
   (directory-listing scs "/"))
 
-(defn scs-file-contents
+(defn slurp
   "Given an SCS file (as returned by `scs-file`) and a path within it, read
   that file and return its contents as a string.
   
@@ -58,32 +59,31 @@
     (when-let [content (codec/slurp scs path)]
       (sii/parse-with-includes content
                                (fn [filename]
-                                 (codec/slurp scs (str dir "/" filename)))))))
+                                 (let [inc-path (if (= \/ (first filename))
+                                                  filename
+                                                  (str dir "/" filename))]
+                                   (or (codec/slurp scs inc-path)
+                                       (throw (ex-info "Failed to read include file"
+                                                       {:requested-file filename
+                                                        :include-path   inc-path
+                                                        :pwd            dir})))))))))
 
-(comment
-  #_(def f (scs-file :ats "base_vehicle.scs"))
-  (def f (scs-file :ats #_"def.scs"
-                   "dlc_freightliner_cascadia2019.scs"))
+(defn- locale-file [scs filename]
+  (if-let [[{:keys [key val]}] (scs->text-sii scs filename)]
+    (zipmap key val)
+    (throw (ex-info "Failed to parse locale" {:locale filename}))))
+
+(defn locale
+  ([game] (locale game "en_us"))
+  ([game lang]
+   (let [scs (scs-file game "locale.scs")]
+     (reduce merge {}
+             (for [base ["local.sii" "local.override.sii"]]
+               (locale-file scs (str "/locale/" lang "/" base)))))))
+
+(defn file-seq
+  "Returns a list of all files (not directories) in the given SCS file.
   
-
-  (directory-listing f "/def/vehicle/truck/freightliner.cascadia2019/engine")
-
-  (println (codec/slurp f "def/country/california.sui"))
-  (->> (scs->text-sii f "/def/vehicle/truck/freightliner.cascadia2019/engine/dd16_600.sii")
-       )
-  *e
-  ;; T [lb.ft] = ( P [hp] x 5252 ) / N [RPM]
-  ;; P [hp] = T.N / 5252
-  
-  (println (scs-file-contents f "def/city/sacramento.sui"))
-  (println (scs-file-contents f "def/city/sacramento.sui"))
-  
-  (def fs (:files (directory-listing f "map/usa")))
-  (scs-file-contents f "map/usa.mbd")
-
-  (directory-listing f "map")
-
-  (->> fs
-       (remove #(clojure.string/starts-with? % "sec"))
-       (sort fs))
-  )
+  The sub-path is optional. Returns the paths sorted by name."
+  ([scs] (codec/file-seq scs))
+  ([scs path] (codec/file-seq scs path)))

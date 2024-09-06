@@ -1,10 +1,11 @@
 (ns ets.jobs.scs.codec
-  (:refer-clojure :exclude [slurp])
+  (:refer-clojure :exclude [file-seq slurp])
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [ets.jobs.decrypt.interface :as decrypt]
    [gloss.core :as g]
+   [gloss.core.codecs :as gc]
+   [gloss.core.structure :as gs]
    [gloss.io :as gio])
   (:import
    [java.nio ByteBuffer ByteOrder]
@@ -28,10 +29,10 @@
                  (throw (ex-info "Unknown hash function" {:hash-fn hash-fn})))))))
 
 (g/defcodec platform
-  (g/enum :ubyte :pc :xbox/one :xbox/series :ps4 :ps5))
+  (gc/enum :ubyte :pc :xbox/one :xbox/series :ps4 :ps5))
 
 (g/defcodec header-v2
-  (g/ordered-map
+  (gc/ordered-map
     :salt                       :uint16-le    ; 0
     :hash-method                hash-method   ; CITY
     :entry-count                :uint32-le    ; 0x0366     = 870
@@ -43,21 +44,9 @@
     :security-descriptor-offset :uint32-le    ; 0x80       = 128
     :platform                   platform))
 
-(g/defcodec entry-table-v2
-  {})
-
-(g/defcodec meta-table-v2
-  {})
-
-#_(g/defcodec scs-file-v2
-  (g/ordered-map
-    :header      header-v2
-    :entry-table entry-table-v2
-    :meta-table  meta-table-v2))
-
 (g/defcodec preamble
-  (g/ordered-map :magic   (g/string :utf-8 :length 4)
-                 :version :uint16-le))
+  (gc/ordered-map :magic   (g/string :utf-8 :length 4)
+                  :version :uint16-le))
 
 (defn- mmap [path-or-file]
   (let [chan (-> (io/file path-or-file)
@@ -84,7 +73,7 @@
    (unzip (slice buf pos len))))
 
 (g/defcodec entry-table-entry-v2
-  (g/ordered-map
+  (gc/ordered-map
     :hash       :int64-le
     :meta-index :uint32-le
     :meta-count :uint16-le
@@ -98,22 +87,22 @@
          (sort-by :meta-index))))
 
 (g/defcodec metadata-entry-type
-  (g/enum :ubyte
-          {:image            1   
-           :sample           2   
-           :mip-proxy        3   
-           :inline-directory 4   
-           :plain            128 
-           :directory        129 
-           :mip0             130 
-           :mip1             131 
-           :mip-tail         132}))
+  (gc/enum :ubyte
+           {:image            1   
+            :sample           2   
+            :mip-proxy        3   
+            :inline-directory 4   
+            :plain            128 
+            :directory        129 
+            :mip0             130 
+            :mip1             131 
+            :mip-tail         132}))
 
 (defn- no-writing [_]
   (throw (ex-info "writing is not supported" {})))
 
 (def ^:private uint24
-  (g/compile-frame
+  (gs/compile-frame
     [:ubyte :ubyte :ubyte]
     no-writing
     (fn [[b0 b1 b2]]
@@ -124,8 +113,8 @@
 (defmulti ^:private metadata-entry-frame identity)
 
 (defn- metadata-entry-frame-basic [type]
-  (g/compile-frame
-    (g/ordered-map
+  (gs/compile-frame
+    (gc/ordered-map
       :compressed-bytes uint24
       :flags            :ubyte
       :size             :uint32-le
@@ -144,10 +133,10 @@
   (metadata-entry-frame-basic type))
 
 (defmethod metadata-entry-frame :image [_]
-  (g/ordered-map
+  (gc/ordered-map
     :unknown1         :uint64-le
-    :texture/width    (g/compile-frame :uint16-le dec inc)
-    :texture/height   (g/compile-frame :uint16-le dec inc)
+    :texture/width    (gs/compile-frame :uint16-le dec inc)
+    :texture/height   (gs/compile-frame :uint16-le dec inc)
     :flags/image      :uint32-le
     :flags/sample     :uint32-le
     :compressed-bytes uint24
@@ -159,9 +148,9 @@
   (g/header
     [uint24 metadata-entry-type]
     (fn [[index type]]
-      (g/compile-frame (metadata-entry-frame type)
-                       no-writing
-                       #(assoc % :index index)))
+      (gs/compile-frame (metadata-entry-frame type)
+                        no-writing
+                        #(assoc % :index index)))
     no-writing))
 
 (defn- read-metadata-table-v2
@@ -180,21 +169,11 @@
       pos?))
 
 (defn- entry-content [scs {metadata :meta :as entry}]
-  (let [pos      (* block-size (:offset-block metadata))
-        #_#_buf      (-> scs :buf (.slice))] 
-    #_(prn (:flags entry) (compressed? entry)
-           (map #(Long/toHexString (+ pos %))
-                [0 (:compressed-bytes metadata) (:size metadata)]))
+  (let [pos (* block-size (:offset-block metadata))] 
     (if (compressed? entry)
       ;; TODO: Include the size, for efficient unzipping.
       (unzip (:buf scs) pos (:compressed-bytes metadata))
       (slice (:buf scs) pos (:size metadata)))))
-
-(defn- directory-entry-v2 [buf dir len]
-  (let [path (gio/decode (g/string :utf-8 :length len) buf #_no-remainder? false)]
-    (if (= \/ (first path))
-      (update dir :subdirs conj (subs path 1))
-      (update dir :files   conj path))))
 
 ;; A U32 length, that many :ubytes, then length strings of the given lengths!
 ;; We use a nested `g/header` to express that combo.
@@ -203,9 +182,9 @@
     :uint32-le
     (fn [n-strs]
       (g/header
-        (g/compile-frame (vec (repeat n-strs :ubyte)))
+        (gs/compile-frame (vec (repeat n-strs :ubyte)))
         (fn [lengths]
-          (g/compile-frame
+          (gs/compile-frame
             (vec (for [len lengths]
                    (g/string :utf-8 :length len)))))
         no-writing))
@@ -245,6 +224,14 @@
 (defn directory-listing [scs path]
   (when-let [entry (path->entry scs path)]
     (directory-v2 scs entry)))
+
+(defn file-seq
+  ([scs] (file-seq scs ""))
+  ([scs path]
+   (let [{:keys [files subdirs]} (directory-listing scs path)]
+     (lazy-cat (for [f (sort files)]
+                 (str path "/" f))
+               (mapcat #(file-seq scs (str path "/" %)) (sort subdirs))))))
 
 (defn- ->string [^ByteBuffer buf]
   (let [arr (byte-array (.remaining buf))]

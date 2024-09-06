@@ -18,7 +18,7 @@
     <ws>           = <wsline> eol1* <wsline>
     <wsline>       = (#'[ \\t\\r]*' | BlockComment)*
     eol            = eol1 <ws>
-    <BlockComment> = <'/*'> ((!'*/') #'.')* <'*/'>
+    <BlockComment> = <'/*'> ((!'*/') (#'.' | '\\n'))* <'*/'>
     <Comment>      = (<'#'> | <'//'>) <#'[^\\n]*'>
 
     Defs           = Unit*
@@ -33,7 +33,9 @@
     ArrayElement   = <'[]'>
     <Value>        = String | Float | Placement | Floats | Signed | Unsigned | Fixeds | Bool | LocalPointer | Pointer
 
-    String         = <'\"'> #'[^\"]*' <'\"'>
+    String         = <'\"'> Char*  <'\"'>
+    <Char>         = Escaped | #'[^\"\\\\]*'
+    Escaped        = #'\\\\.'
     Float          = #'-?\\d+\\.\\d+'
     <Number>       = Float | Signed
     Floats         = <LP> Number (<COMMA> Number)+ <RP>
@@ -72,8 +74,11 @@
 (defmethod ->clojure :Float [[_float s]]
   (parse-double s))
 
-(defmethod ->clojure :String [[_string s]]
-  s)
+(defmethod ->clojure :String [s]
+  (str/join (map ->clojure (rest s))))
+
+(defmethod ->clojure :Escaped [[_escaped s]]
+  (subs s 1))
 
 (doseq [tag [:File :LocalPointer :TOKEN]]
   (defmethod ->clojure tag [[_tag wrapped]]
@@ -108,8 +113,12 @@
 
 ;; TODO: Only some structures are getting properly unwrapped, currently.
 
+(defn- strip-bom [s]
+  (str/replace s "\ufeff" ""))
+
 (defn parse-text [sii-string]
   (->> sii-string
+       strip-bom
        (insta/parse sii-parser)
        ->clojure))
 
@@ -128,18 +137,7 @@
 
 (defn parse-with-includes [sii-string include-fn]
   (->> (resolve-includes sii-string include-fn)
-       (insta/parse sii-parser)
-       ->clojure))
-
-(comment
-  
-	(insta/parse
-    sii-parser
-    "secondary_time_zone_area[]: (-28000, -23335.8, -3349.8, 1100.0)"
-    #_"(-28000, -23335.8, -3349.8, 1100.0)"
-    :start :Attribute)
-  (parse-text-file "scs/oversize/def/route.sii")
-  (parse-text-file "scs/oversize/def/oversize_offer_data.sii"))
+       parse-text))
 
 (defn parse-profile-basics
   "Expects a ByteBuffer for the parsed profile.sii. Uses a hacky regex
