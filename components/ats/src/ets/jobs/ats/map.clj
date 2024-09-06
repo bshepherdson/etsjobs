@@ -61,12 +61,27 @@
           s
           (recur after))))))
 
-(defn- tx-cargo [{:keys [adr_class name overweight]
+;; The heavy cargoes don't have a clear signal in the SCS files, so here's
+;; a hard-coded lists of the ones that count for the Heavy Cargo Pack.
+(def ^:private heavy-cargoes
+  #{"asph_miller"
+    "coil"
+    "cott_harvest"
+    "dozer"
+    "lift_truck"
+    "lift_truck_s"
+    "mobile_crane"
+    "scraper"
+    "tractor_c"
+    "transformer"})
+
+(defn- tx-cargo [{:keys [adr_class name]
                   [_cargo slug] :sii/block-id}]
-  (merge {:cargo/ident   slug
-          :cargo/name    (i18n name)
-          :cargo/adr     (into #{} (map adr-classes) adr_class)}
-         (when (= overweight ["true"])
+  (merge {:cargo/ident slug
+          :cargo/name  (i18n name)}
+         (when-let [adr (not-empty (into #{} (map adr-classes) adr_class))]
+           {:cargo/adr adr})
+         (when (heavy-cargoes slug)
            {:cargo/heavy? true})))
 
 (defn- read-game-file [{:keys [cargo city company scs]}]

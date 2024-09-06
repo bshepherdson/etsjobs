@@ -113,6 +113,10 @@
  (fn [_ctx {:keys [special type]}]
   (or special type)))
 
+(defmulti ^:private completed?
+ (fn [{:keys [special type]}]
+  (or special type)))
+
 (defn- progress-frame [inner]
  (html
   [:section.progress
@@ -139,6 +143,12 @@
 (defmethod progress-block :set/strings [_ctx progress]
   (progress-list identity progress))
 
+(doseq [type [:set/cargo :set/city :set/company :set/strings]]
+ (derive type :set/*))
+
+(defmethod completed? :set/* [{:keys [needed]}]
+ (empty? needed))
+
 (defmethod progress-block :count [_ctx {:keys [completed total]}]
  (progress-frame
   [:div
@@ -147,6 +157,9 @@
                :style "margin-right: 1em"}
     (str completed " / " total)]
    (str completed " / " total)]))
+
+(defmethod completed? :count [{:keys [completed total]}]
+ (>= completed total))
 
 (def ^:private snake-river-pairs
   {["kennewick" "lewiston"]     "Kennewick - Lewiston"
@@ -157,18 +170,27 @@
 (defmethod progress-block :along-the-snake-river [_ctx progress]
   (progress-list snake-river-pairs progress))
 
+(defmethod completed? :along-the-snake-river [{:keys [needed]}]
+ (empty? needed))
+
 (defn achievement-section [ctx {:keys [id name desc]}]
   ; Sorting by descending time-to-live.
   (let [{:keys [jobs progress]} (achivement-info ctx id)
-        jobs                    (sort-by-expiration ctx jobs)]
-    (html
+        jobs                    (sort-by-expiration ctx jobs)
+        done?                   (completed? progress)]
+    (if done?
+     (html
+      [:section
+       [:h3 {:style "font-style: italic; color: #7c7"}
+        (str "\u2713  " name)]])
+     (html
       [:section
        [:h3 name]
        [:p desc]
        (progress-block ctx progress)
        (if (empty? jobs)
          [:p {:style "font-style: italic; color: #444"} "No jobs available."]
-         (job-block ctx jobs))])))
+         (job-block ctx jobs))]))))
 
 (defn region-section [ctx {:keys [name cheevos]}]
   (html

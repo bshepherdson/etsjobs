@@ -895,7 +895,6 @@
   (major-miner db :job/source "nmq_min_plnt" ["bozeman" "butte"]
                '[[?job :job/cargo [:cargo/ident "talc_pwdr"]]]))
 
-
 (def achievement-groups
   [{:group   :state/ca
     :name    "California"
