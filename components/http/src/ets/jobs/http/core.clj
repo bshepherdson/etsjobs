@@ -73,93 +73,139 @@
 
 (defn cargo-description [{:cargo/keys [name adr]}]
   [:td name (when adr
-             (-> adr first :db/ident adr-symbols))])
+              (-> adr first :db/ident adr-symbols))])
 
 (defn city-td [city]
- [:td.city (:city/name city)
-  [:span.grow]
-  (let [state (-> city :city/state :db/ident)]
-   [:span.country (when (= state :state/i)
-                   {:style "font-family: serif"})
-    (str/upper-case (name state))])
+  [:td.city (:city/name city)
+   [:span.grow]
+   (let [state (-> city :city/state :db/ident)]
+     [:span.country (when (= state :state/i)
+                      {:style "font-family: serif"})
+      (str/upper-case (name state))])
   ;; TODO: Bring back the flags for ETS2.
-  #_[:span.flag "flag"]])
+   #_[:span.flag "flag"]])
 
 (defn job-block [ctx jobs]
   (html
-    [:table
-     [:tr (for [h job-headings] [:th h])]
-     (for [{:offer/keys [expiration-time]
-            :job/keys   [cargo distance-km source target]} jobs]
-       [:tr
-        [:td {:style "text-align: right"} (expiry-time ctx expiration-time)] ;; XXX: debugging
-        (city-td (:location/city source))
-        [:td (:company/name (:location/company source))]
-        (city-td (:location/city target))
-        [:td (:company/name (:location/company target))]
-        [:td {:style "text-align: right"} (format "%dkm" distance-km)]
-        (cargo-description cargo)])]))
+   [:table
+    [:tr (for [h job-headings] [:th h])]
+    (for [{:offer/keys [expiration-time]
+           :job/keys   [cargo distance-km source target]} jobs]
+      [:tr
+       [:td {:style "text-align: right"} (expiry-time ctx expiration-time)]
+       (city-td (:location/city source))
+       [:td (:company/name (:location/company source))]
+       (city-td (:location/city target))
+       [:td (:company/name (:location/company target))]
+       [:td {:style "text-align: right"} (format "%dkm" distance-km)]
+       (cargo-description cargo)])]))
+
+(defn- oversize-block [ctx jobs]
+  (html
+   [:table
+    [:tr
+     [:th "Expires in"]
+     [:th "Origin"]
+     [:th ""]
+     [:th "Destination"]
+    ;; TODO: Is there distance for these?
+     #_[:th "Distance"]
+     [:th "Cargo"]]
+    (for [{:offer/keys [expiration-time]
+           {:template.special/keys [cargo]
+            {:route.special/keys [source-city target-city]}
+            :template.special/route}
+           :offer.special/template} jobs
+          :when (and (:city/name source-city)
+                     (:city/name target-city))]
+      [:tr
+       [:td {:style "text-align: right"} (expiry-time ctx expiration-time)]
+       (city-td source-city)
+       [:td]
+       (city-td target-city)
+       (cargo-description cargo)])]))
 
 (defn- achivement-info [{:keys [game db]} cheevo]
- (case game
-  :ats  (atsmap/achievement-info  db cheevo)
-  :ets2 {} #_(ets2map/achievement-info db cheevo)))
+  (case game
+    :ats  (atsmap/achievement-info  db cheevo)
+    :ets2 {} #_(ets2map/achievement-info db cheevo)))
 
 (defn- sort-by-expiration [{{{time :game} :cest} :time} jobs]
  ;; Negative time remaining to get a descending sort.
   (sort-by #(- time (:offer/expiration-time %)) jobs))
 
+(defn- sort-by-city [_ctx jobs]
+ (sort-by (comp (juxt (comp :db/ident :city/state) :city/name)
+             :route.special/source-city
+             :template.special/route
+             :offer.special/template)
+   jobs))
+
 (defmulti ^:private progress-block
- (fn [_ctx {:keys [special type]}]
-  (or special type)))
+  (fn [_ctx {:keys [special type]}]
+    (or special type)))
 
 (defmulti ^:private completed?
- (fn [{:keys [special type]}]
-  (or special type)))
+  (fn [{:keys [special type]}]
+    (or special type)))
 
 (defn- progress-frame [inner]
- (html
-  [:section.progress
-   inner]))
+  (html
+   [:section.progress
+    inner]))
 
 (defn- progress-list [f {:keys [completed needed]}]
- (progress-frame
-  [:ul.progress
-   (for [x completed]
-    [:li {:style "text-decoration: line-through; color: #777"}
-     (f x)])
-   (for [x needed]
-    [:li (f x)])]))
+  (progress-frame
+   [:ul.progress
+    (for [x completed]
+      [:li {:style "text-decoration: line-through; color: #777"}
+       (f x)])
+    (for [x needed]
+      [:li (f x)])]))
 
 (defmethod progress-block :set/cargo [_ctx progress]
- (progress-list :cargo/name progress))
+  (progress-list :cargo/name progress))
 
 (defmethod progress-block :set/city [_ctx progress]
- (progress-list (comp :city/name :location/city) progress))
+  (progress-list (comp :city/name :location/city) progress))
 
 (defmethod progress-block :set/company [_ctx progress]
- (progress-list (comp :company/name :location/company) progress))
+  (progress-list (comp :company/name :location/company) progress))
 
 (defmethod progress-block :set/strings [_ctx progress]
   (progress-list identity progress))
 
-(doseq [type [:set/cargo :set/city :set/company :set/strings]]
- (derive type :set/*))
+(defmethod progress-block :set/oversize-route
+  [_ctx {:keys [completed needed]}]
+  #_[:pre (with-out-str (clojure.pprint/pprint needed))]
+  (let [completed (count completed)
+        total     (+ completed (count needed))]
+    (progress-frame
+     [:div
+      [:progress {:max   total
+                  :value completed
+                  :style "margin-right: 1em"}
+       (str completed " / " total)]
+      (str completed " / " total)])))
+
+(doseq [type [:set/cargo :set/city :set/company
+              :set/strings :set/oversize-route]]
+  (derive type :set/*))
 
 (defmethod completed? :set/* [{:keys [needed]}]
- (empty? needed))
+  (empty? needed))
 
 (defmethod progress-block :count [_ctx {:keys [completed total]}]
- (progress-frame
-  [:div
-   [:progress {:max   total
-               :value completed
-               :style "margin-right: 1em"}
-    (str completed " / " total)]
-   (str completed " / " total)]))
+  (progress-frame
+   [:div
+    [:progress {:max   total
+                :value completed
+                :style "margin-right: 1em"}
+     (str completed " / " total)]
+    (str completed " / " total)]))
 
 (defmethod completed? :count [{:keys [completed total]}]
- (>= completed total))
+  (>= completed total))
 
 (def ^:private snake-river-pairs
   {["kennewick" "lewiston"]     "Kennewick - Lewiston"
@@ -171,44 +217,49 @@
   (progress-list snake-river-pairs progress))
 
 (defmethod completed? :along-the-snake-river [{:keys [needed]}]
- (empty? needed))
+  (empty? needed))
 
-(defn achievement-section [ctx {:keys [id name desc]}]
+(defn achievement-section [ctx cheevo-group {:keys [id name desc]}]
   ; Sorting by descending time-to-live.
   (let [{:keys [jobs progress]} (achivement-info ctx id)
-        jobs                    (sort-by-expiration ctx jobs)
+        sorter                  (case cheevo-group
+                                 :group/oversize sort-by-city
+                                 sort-by-expiration)
+        jobs                    (sorter ctx jobs)
         done?                   (completed? progress)]
     (if done?
-     (html
-      [:section
-       [:h3 {:style "font-style: italic; color: #7c7"}
-        (str "\u2713  " name)]])
-     (html
-      [:section
-       [:h3 name]
-       [:p desc]
-       (progress-block ctx progress)
-       (if (empty? jobs)
-         [:p {:style "font-style: italic; color: #444"} "No jobs available."]
-         (job-block ctx jobs))]))))
+      (html
+       [:section
+        [:h3 {:style "font-style: italic; color: #7c7"}
+         (str "\u2713  " name)]])
+      (html
+       [:section
+        [:h3 name]
+        [:p desc]
+        (progress-block ctx progress)
+        (if (empty? jobs)
+          [:p {:style "font-style: italic; color: #444"} "No jobs available."]
+          (if (= cheevo-group :group/oversize)
+            (oversize-block ctx jobs)
+            (job-block ctx jobs)))]))))
 
-(defn region-section [ctx {:keys [name cheevos]}]
+(defn region-section [ctx {:keys [cheevos group name]}]
   (html
-    [:section
-     [:h2 name]
-     #_[:p (pr-str cheevos)]
-     (for [ach cheevos]
-       (achievement-section ctx ach))]))
+   [:section
+    [:h2 name]
+    #_[:p (pr-str cheevos)]
+    (for [ach cheevos]
+      (achievement-section ctx group ach))]))
 
 (defn time-str [{:keys [week day hour mins]}]
   (format "Week %2d, %s %02d:%02d" week day hour mins))
 
 (defn sanity-check [{{:keys [cest local zone-name]} :time}]
- [:section
-  [:h2 "Sanity Check"]
-  [:p "Check you have up-to-date jobs by confirming the in-game time."]
-  [:p [:strong "Time zones on:"]  " " (time-str local) " " zone-name]
-  [:p [:strong "Time zones off:"] " " (time-str cest)]])
+  [:section
+   [:h2 "Sanity Check"]
+   [:p "Check you have up-to-date jobs by confirming the in-game time."]
+   [:p [:strong "Time zones on:"]  " " (time-str local) " " zone-name]
+   [:p [:strong "Time zones off:"] " " (time-str cest)]])
 
 (defn profile-body [{:keys [game profile] :as ctx}]
   (html [:div
@@ -222,8 +273,8 @@
          (sanity-check ctx)
 
          (for [region (case game
-                  #_#_:ets2 (ets2map/achievement-groups)
-                  :ats  (atsmap/achievement-groups))]
+                        #_#_:ets2 (ets2map/achievement-groups)
+                        :ats  (atsmap/achievement-groups))]
            (region-section ctx region)
            #_(-> (jobs/game-meta game)
                  :regions
@@ -234,9 +285,9 @@
 (defn profiled [{:keys [uri]}]
   (let [[_  game-raw profile] (re-matches #"/(ats|ets2)/([\w\d]+)" uri)
         ctx (jobs/parse-latest-save (keyword game-raw) profile)]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body    (profile-body ctx)}))
+    {:status 200
+     :headers {"Content-Type" "text/html"}
+     :body    (profile-body ctx)}))
 
 (defn handler [{:keys [uri] :as req}]
   (let [h (cond

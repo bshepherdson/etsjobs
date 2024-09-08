@@ -114,7 +114,7 @@
 
 (def initial-data
   "Initial data for the ATS map, companies, etc."
-  (future (into [] cat [#_cargoes tx-states @tx-game-files])))
+  (future (into [] cat [tx-states @tx-game-files])))
 
 (def ^:private city-renames
   {"san_rafael" "oakland"

@@ -120,11 +120,24 @@
   {:db/ident        :job.type/on_compn}
   {:db/ident        :job.type/spec_oversize}
 
-  ;; Special jobs have a route ID, a string slug defined by the game.
+  ;; Special Transport jobs ==================================================
+  ;; - There are standardized *routes*, which link two cities and have a name
+  ;;   (`:route.special/name`) like "src_dst1".
+  ;; - Each route has one or more *templates*, which link a route to a cargo.
+  ;; - Each *template* may or may not be available as a *special job* offer,
+  ;;   which links a template to an expiration time.
+  
+  ;; Special job offers get their cargo from the template:
+  ;; (-> % :offer.special/template :template.special/cargo)
+  ;; Special job deliveries get their cargo from the usual :job/cargo.
   {:db/ident        :job.special/route
    :db/valueType    :db.type/ref
    :db/cardinality  :db.cardinality/one
    :db/doc          "Ref to the unique index for the special route."}
+  {:db/ident        :offer.special/template
+   :db/valueType    :db.type/ref
+   :db/cardinality  :db.cardinality/one
+   :db/doc          "Ref to the unique index for the special job template."}
   
   ;; Special Transport routes are a separate table. These are indexed by the
   ;; :route.special/name, a string slug like "src_dst1".
@@ -140,21 +153,22 @@
    :db/valueType    :db.type/ref
    :db/cardinality  :db.cardinality/one}
 
-  ;; Special job offers are in a separate table, and referenced by name rather
-  ;; than giving their details directly.
-  {:db/ident        :offer.special/name
+  ;; Special job offers *templates* are in a separate table, and referenced by
+  ;; name rather than giving their details directly.
+  ;; :offer.special/template points to these entities.
+  {:db/ident        :template.special/name
    :db/valueType    :db.type/string
    :db/cardinality  :db.cardinality/one
    :db/unique       :db.unique/identity
-   :db/doc          "Game-defined slug for a special transport job *offer*."}
-  {:db/ident        :offer.special/cargo
+   :db/doc          "Game-defined slug for a special transport job offer *template*."}
+  {:db/ident        :template.special/cargo
    :db/valueType    :db.type/ref
    :db/cardinality  :db.cardinality/one
-   :db/doc          "Ref to the cargo carried by this special job."}
-  {:db/ident        :offer.special/route
+   :db/doc          "Ref to the cargo carried by this special job template."}
+  {:db/ident        :template.special/route
    :db/valueType    :db.type/ref
    :db/cardinality  :db.cardinality/one
-   :db/doc          "Ref to the special route for this Special Transport job offer."}
+   :db/doc          "Ref to the route for this special transport job offer template."}
 
   ;; Specific to job offers
   {:db/ident        :offer/expiration-time

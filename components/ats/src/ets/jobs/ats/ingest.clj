@@ -104,6 +104,14 @@
          (when (not-empty route-name)
            {:job.special/route {:route.special/name route-name}}))])))
 
+(defmethod ingest-block "oversize_offer"
+  [{:keys [expiration]
+    [_spec-offer template] :offer-data
+    id                     :sii/block-id}]
+  [{:offer/expiration-time  (long expiration)
+    :offer.special/template [:template.special/name template]
+    :sii/block-id           id}])
+
 (defn- jobs-without-target [db]
   (d/q '[:find ?job :where
          [?job :job/id _]

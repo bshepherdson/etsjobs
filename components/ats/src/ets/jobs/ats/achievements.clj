@@ -60,6 +60,20 @@
      {:job/cargo  [:cargo/ident :cargo/name {:cargo/adr [:db/ident]}]}
      :*]))
 
+(def ^:private route-pull
+  (let [endpoint [:city/ident :city/name {:city/state [:db/ident]}]]
+    [:db/id
+     :route.special/name
+     {:route.special/source-city endpoint}
+     {:route.special/target-city endpoint}]))
+
+(def ^:private oversize-pull
+  [{:offer.special/template
+    [{:template.special/cargo [:cargo/ident :cargo/name {:cargo/adr [:db/ident]}]}
+     {:template.special/route route-pull}
+     :*]}
+   :offer/expiration-time])
+
 (def ^:private loc-pull
   [:db/id
    {:location/city    [:city/name]}
@@ -115,7 +129,7 @@
               [?cargo :cargo/heavy? true]]
             db)))
 
-(defn- deliver-cargoes [db cargo-rule job-rule]
+(defn- deliver-cargoes [db pull cargo-rule job-rule]
   (let [dc-rules (conj rules cargo-rule job-rule)
         cargoes  (d/q '[:find [?cargo ...]
                         :in $ % :where
@@ -135,12 +149,12 @@
                       :in $ % pattern [?needed ...] :where
                       (job-rule ?job ?needed)
                       (offer? ?job)]
-                    db dc-rules job-pull needed)}))
+                    db dc-rules pull needed)}))
 
 (defmethod achievement-info :i-thought-this-should-be-heavy
   [db _cheevo]
   (deliver-cargoes
-    db
+    db job-pull
     '[(cargo-rule ?cargo)
       [?cargo :cargo/heavy? true]]
     '[(job-rule ?job ?cargo)
@@ -326,10 +340,11 @@
 ;; ===========================================================================
 
 (defn- counted-deliveries
-  ([db total match-rule]
-   (counted-deliveries db total match-rule '[(delivery-rule ?job)
-                                             (match ?job)]))
-  ([db total match-rule delivery-rule]
+  ([db total pattern match-rule]
+   (counted-deliveries db total pattern match-rule
+                       '[(delivery-rule ?job)
+                         (match ?job)]))
+  ([db total pattern match-rule delivery-rule]
    (let [sd-rules (conj rules match-rule delivery-rule)
          matches  (or (d/q '[:find (count ?job) .
                              :in $ % :where
@@ -346,13 +361,15 @@
                          :in $ % pattern :where
                          (match ?job)
                          (offer? ?job)]
-                       db sd-rules job-pull))})))
+                       db sd-rules pattern))})))
 
 (defn- single-delivery
   ([db match-rule]
-   (counted-deliveries db 1 match-rule))
+   (counted-deliveries db 1 job-pull match-rule))
   ([db match-rule delivery-rule]
-   (counted-deliveries db 1 match-rule delivery-rule)))
+   (counted-deliveries db 1 job-pull match-rule delivery-rule))
+  ([db pattern match-rule delivery-rule]
+   (counted-deliveries db 1 pattern match-rule delivery-rule)))
 
 (defn- single-delivery-to
   [db company-slug]
@@ -554,7 +571,7 @@
 ;; Maybe Steam is counting across profiles? Multiple company slugs?
 (defmethod achievement-info :pump-it-up [db _cheevo]
   (counted-deliveries
-    db 5
+    db 5 job-pull
     '[(match ?job)
       [?job  :job/cargo        [:cargo/ident "frac_tank"]]
       [?job  :job/target       ?loc]
@@ -577,7 +594,7 @@
 
 (defmethod achievement-info :grown-in-idaho [db _cheevo]
   (counted-deliveries
-    db 5
+    db 5 job-pull
     '[(match ?job)
       [?job  :job/cargo        [:cargo/ident "potatoes"]]
       [?job  :job/source       ?loc]
@@ -678,12 +695,6 @@
           [?job :job/cargo  ?cargo]
           [?job :job/target ?loc]]]))
 
-(comment
-  (let [db     (d/db ets.jobs.search.core/conn)]
-    (achievement-info db :energy-from-above)
-    )
-  )
-
 ;; Gold Rush =================================================================
 (def ^:private ach-gold-rush
   {:id    :gold-rush
@@ -692,14 +703,15 @@
    :desc  "Deliver 10 loads to or from the NAMIQ company at the gold mine in Colorado."})
 
 (defmethod achievement-info :gold-rush [db _cheevo]
-  (counted-deliveries db 10 '[(match ?job)
-                              [(ground ["nmq_min_qry" "nmq_min_qrys"]) [?slug ...]]
-                              [?cmp  :company/ident    ?slug]
-                              [?loc  :location/company ?cmp]
-                              [?loc  :location/city    ?city]
-                              [?city :city/state       :state/co]
-                              (or [?job :job/source ?loc]
-                                  [?job :job/target ?loc])]))
+  (counted-deliveries db 10 job-pull
+                      '[(match ?job)
+                        [(ground ["nmq_min_qry" "nmq_min_qrys"]) [?slug ...]]
+                        [?cmp  :company/ident    ?slug]
+                        [?loc  :location/company ?cmp]
+                        [?loc  :location/city    ?city]
+                        [?city :city/state       :state/co]
+                        (or [?job :job/source ?loc]
+                            [?job :job/target ?loc])]))
 
 ;; Up and Away ===============================================================
 ;; TODO: This one is also showing as done 10/10 on Steam but 9/10 for this profile.
@@ -711,9 +723,10 @@
    :desc  "Complete 10 delivery to Denver airport."})
 
 (defmethod achievement-info :up-and-away [db _cheevo]
-  (counted-deliveries db 10 '[(match ?job)
-                              [?loc :location/company [:company/ident "aport_den"]]
-                              [?job :job/target       ?loc]]))
+  (counted-deliveries db 10 job-pull
+                      '[(match ?job)
+                        [?loc :location/company [:company/ident "aport_den"]]
+                        [?job :job/target       ?loc]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -732,7 +745,7 @@
 (defmethod achievement-info :big-boy
   [db _cheevo]
   (deliver-cargoes
-    db
+    db job-pull
     '[(cargo-rule ?cargo)
       (or [?cargo :cargo/ident "train_part"]
           [?cargo :cargo/ident "tamp_machine"]
@@ -790,14 +803,15 @@
    :desc  "Deliver 10 Dumpster Bins or Paper Waste to Waste Transfer Stations in Montana. "})
 
 (defmethod achievement-info :zero-waste-bins [db _cheevo]
-  (counted-deliveries db 10 '[(match ?job)
-                              (or [?cargo :cargo/ident "dumpster"]
-                                  [?cargo :cargo/ident "waste_paper"])
-                              [?job  :job/cargo     ?cargo]
-                              [?job  :job/target    ?tgt]
-                              [?tgt  :location/city ?city]
-                              [?city :city/state    :state/mt]
-                              [?tgt  :location/company [:company/ident "mwm_wst_whs"]]]))
+  (counted-deliveries db 10 job-pull
+                      '[(match ?job)
+                        (or [?cargo :cargo/ident "dumpster"]
+                            [?cargo :cargo/ident "waste_paper"])
+                        [?job  :job/cargo     ?cargo]
+                        [?job  :job/target    ?tgt]
+                        [?tgt  :location/city ?city]
+                        [?city :city/state    :state/mt]
+                        [?tgt  :location/company [:company/ident "mwm_wst_whs"]]]))
 
 (def ^:private ach-zero-waste-truck
   {:id    :zero-waste-truck
@@ -815,21 +829,8 @@
                         (or [?job :job/source ?loc]
                             [?job :job/target ?loc])]))
 
-(comment
-  (d/q '[:find [(pull ?job [:*]) ...]
-         :in $ % :where
-         [?cargo :cargo/ident   "garbage_trck"]
-         [?job   :job/cargo     ?cargo]
-         [?city  :city/state    :state/mt]
-         [?loc   :location/city ?city]
-         (or [?job :job/source ?loc]
-             [?job :job/target ?loc])]
-       (d/db ets.jobs.search.core/conn)
-       rules)
-  )
-
 ;; Power On! =================================================================
-;; TODO: Test this one - no jobs appear, nothing completed so far.
+;; TODO: Test this one, no jobs appear.
 (def ^:private ach-power-on
   {:id    :power-on
    :name  "Power On!"
@@ -895,6 +896,143 @@
   (major-miner db :job/source "nmq_min_plnt" ["bozeman" "butte"]
                '[[?job :job/cargo [:cargo/ident "talc_pwdr"]]]))
 
+
+;; ===========================================================================
+;; |                                                                         |
+;; |                               Oversize                                  |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Size Matters ==============================================================
+(def ^:private ach-size-matters
+  {:id    :size-matters
+   :name  "Size Matters"
+   :group :group/oversize
+   :desc  "Perfect oversize delivery"})
+
+(defmethod achievement-info :size-matters [db _cheevo]
+  (single-delivery db oversize-pull
+                   '[(match ?job)
+                     [?job :offer.special/template _]
+                     ]
+                   '[(delivery-rule ?job)
+                     [?job :job/type :job.type/spec_oversize]
+                     (perfect? ?job)]))
+
+;; Get (to) the Chopper! =====================================================
+(def ^:private ach-get-to-the-chopper
+  {:id    :get-to-the-chopper
+   :name  "Get (to) the Chopper!"
+   :group :group/oversize
+   :desc  "Perfect delivery of a Helicopter special cargo."})
+
+(defn- specific-heavy-cargo [db cargo-ref]
+  (single-delivery db oversize-pull
+                   ['(match ?job)
+                     ['?tmp :template.special/cargo cargo-ref]
+                     '[?job :offer.special/template ?tmp]]
+                   ['(delivery-rule ?job)
+                     '[?job :job/type  :job.type/spec_oversize]
+                     ['?job :job/cargo cargo-ref]
+                     ;'[?job :db/ident _]
+                     '(perfect? ?job)]))
+
+(defmethod achievement-info :get-to-the-chopper [db _cheevo]
+  (specific-heavy-cargo db [:cargo/ident "helicopter"]))
+
+;; One, Two, Three - Breathe! =================================================
+(def ^:private ach-one-two-three-breathe
+  {:id    :one-two-three-breathe
+   :name  "One, Two, Three - Breate!"
+   :group :group/oversize
+   :desc  "Perfect delivery of an Air Conditioner special cargo."})
+
+(defmethod achievement-info :one-two-three-breathe [db _cheevo]
+  (specific-heavy-cargo db [:cargo/ident "aircondition"]))
+
+;; Home Sweet Home ============================================================
+(def ^:private ach-home-sweet-home
+  {:id    :home-sweet-home
+   :name  "Home Sweet Home"
+   :group :group/oversize
+   :desc  "Perfect delivery of a Turnkey House special cargo."})
+
+(defmethod achievement-info :home-sweet-home [db _cheevo]
+  (specific-heavy-cargo db [:cargo/ident "house"]))
+
+;; Your Dumper has Arrived! ===================================================
+(def ^:private ach-your-dumper-has-arrived
+  {:id    :your-dumper-has-arrived
+   :name  "Your Dumper has Arrived!"
+   :group :group/oversize
+   :desc  "Deliver all three parts of a disassembled dumper."})
+
+(defn- special-cargoes
+  [db cargo-rule]
+  (let [d-rules (conj rules cargo-rule)
+        cargoes  (d/q '[:find [?cargo ...]
+                        :in $ % :where
+                        (cargo-rule ?cargo)]
+                      db d-rules)
+        done     (d/q '[:find [?cargo ...]
+                        :in $ % :where
+                        (cargo-rule ?cargo)
+                        [?job :job/cargo         ?cargo]
+                        [?job :job.special/route _]]
+                      db d-rules)
+        needed   (remove (set done) cargoes)]
+    {:progress {:type      :set/cargo
+                :completed (d/pull-many db cargo-pull done)
+                :needed    (d/pull-many db cargo-pull needed)}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [?needed ...] :where
+                      [?job :offer.special/template ?tmp]
+                      [?tmp :template.special/cargo ?needed]]
+                    db d-rules oversize-pull needed)}))
+
+(defmethod achievement-info :your-dumper-has-arrived [db _cheevo]
+  (special-cargoes db '[(cargo-rule ?cargo)
+                        (or [?cargo :cargo/ident "dumper"]
+                            [?cargo :cargo/ident "dumper_hull"]
+                            [?cargo :cargo/ident "dumper_tire"])]))
+
+;; Big in America! ===========================================================
+(def ^:private ach-big-in-america
+  {:id    :big-in-america
+   :name  "Big in America!"
+   :group :group/oversize
+   :desc  "Deliver all Special Transport cargoes."})
+
+(defmethod achievement-info :big-in-america [db _cheevo]
+  (special-cargoes db '[(cargo-rule ?cargo)
+                        [_ :template.special/cargo ?cargo]]))
+
+;; Go Big or Go Home =========================================================
+(def ^:private ach-go-big-or-go-home
+  {:id    :go-big-or-go-home
+   :name  "Go Big or Go Home"
+   :group :group/oversize
+   :desc  "Complete deliveries on all oversize routes on the current map."})
+
+(defmethod achievement-info :go-big-or-go-home [db _cheevo]
+  (let [routes            (d/q '[:find [(pull ?route pattern) ...]
+                                 :in $ pattern :where
+                                 [?route :route.special/name _]]
+                               db route-pull)
+        deliveries        (set (d/q '[:find [?route ...] :where
+                                      [_ :job.special/route ?route]]
+                                    db))
+        {completed true
+         needed    false} (group-by (comp boolean deliveries :db/id) routes)]
+    {:progress {:type      :set/oversize-route
+                :completed completed
+                :needed    needed}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [?route ...] :where
+                      [?template :template.special/route ?route]
+                      [?job      :offer.special/template ?template]]
+                    db rules oversize-pull (map :db/id needed))}))
+
 (def achievement-groups
   [{:group   :state/ca
     :name    "California"
@@ -948,4 +1086,13 @@
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
-              ach-should-be-heavy]}])
+              ach-should-be-heavy]}
+   {:group   :group/oversize
+    :name    "Special Transport"
+    :cheevos [ach-size-matters
+              ach-get-to-the-chopper
+              ach-one-two-three-breathe
+              ach-home-sweet-home
+              ach-your-dumper-has-arrived
+              ach-big-in-america
+              ach-go-big-or-go-home]}])

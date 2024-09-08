@@ -5,22 +5,13 @@
 (defn- read-file []
   (scs/scs-file :ats "dlc_oversize.scs"))
 
-(comment
- (require '[ets.jobs.files.interface :as files])
- (->> (files/scs-files :ats)
-      (map #(scs/scs-file :ats %))
-      (map #(scs/directory-listing % "def"))
-      (mapcat :files)
-      (filter #(clojure.string/starts-with? % "oversize")))
- )
-
 (defn- tx-oversize-job-spec
   [{[_cargo cargo-slug]      :cargo
     [_route-data route-slug] :route
     [_spec-offer offer-id]   :sii/block-id}]
-  {:offer.special/name  offer-id
-   :offer.special/cargo {:cargo/ident cargo-slug}
-   :offer.special/route [:route.special/name route-slug]})
+  {:template.special/name  offer-id
+   :template.special/cargo {:cargo/ident cargo-slug}
+   :template.special/route [:route.special/name route-slug]})
 
 (defn- tx-oversize-job-specs [scs-file]
   (into [] (map tx-oversize-job-spec)
@@ -44,9 +35,3 @@
                   (tx-oversize-job-specs scs)])))
 
 (def tx-oversize (delay (build-tx-oversize)))
-
-(comment
- (->> (tx-oversize-routes (read-file))
-      (map :route.special/name)
-      sort)
- )
