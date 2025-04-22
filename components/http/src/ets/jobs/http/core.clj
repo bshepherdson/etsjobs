@@ -85,6 +85,9 @@
   ;; TODO: Bring back the flags for ETS2.
    #_[:span.flag "flag"]])
 
+(defn- company-name [{:company/keys [name ident]}]
+ (or name ident))
+
 (defn job-block [ctx jobs]
   (html
    [:table
@@ -94,9 +97,9 @@
       [:tr
        [:td {:style "text-align: right"} (expiry-time ctx expiration-time)]
        (city-td (:location/city source))
-       [:td (:company/name (:location/company source))]
+       [:td (company-name (:location/company source))]
        (city-td (:location/city target))
-       [:td (:company/name (:location/company target))]
+       [:td (company-name (:location/company target))]
        [:td {:style "text-align: right"} (format "%dkm" distance-km)]
        (cargo-description cargo)])]))
 
@@ -170,7 +173,7 @@
   (progress-list (comp :city/name :location/city) progress))
 
 (defmethod progress-block :set/company [_ctx progress]
-  (progress-list (comp :company/name :location/company) progress))
+  (progress-list (comp company-name :location/company) progress))
 
 (defmethod progress-block :set/strings [_ctx progress]
   (progress-list identity progress))

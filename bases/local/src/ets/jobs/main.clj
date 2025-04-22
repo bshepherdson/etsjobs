@@ -1,7 +1,7 @@
 (ns ets.jobs.main
   (:require
-    [ets.jobs.http.interface :as web]
-    [ring.adapter.jetty :as jetty])
+   [ets.jobs.http.interface :as web]
+   [ring.adapter.jetty :as jetty])
   (:gen-class))
 
 (def port
@@ -18,4 +18,4 @@
 
 (comment
   (start)
-  )
+  (.getPid (java.lang.management.ManagementFactory/getRuntimeMXBean)))

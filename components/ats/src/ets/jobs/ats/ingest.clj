@@ -8,8 +8,8 @@
 
 (defn- location-tx [city company]
   (let [city (map/canonical-city-name city)]
-    {:location/company [:company/ident company]
-     :location/city    [:city/ident city]
+    {:location/company {:company/ident company}
+     :location/city    {:city/ident city}
      :db/id            (str "location__" city "." company)}))
 
 (defn- location-slug->ref [slug]

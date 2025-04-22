@@ -27,7 +27,7 @@
 ;; - Big Wheels Keep On Turning: 3 Big Tyres from *both* tyre factories
 ;; - Air Capital of the World: Wing + Engine to/from every depot in Wichita
 
-;; Consecutive total: 
+;; Consecutive total:
 ;; - Bigger Cargo, Bigger Profit: $100k deliveries 5 in a row
 
 ;; Notes:
@@ -77,7 +77,7 @@
 (def ^:private loc-pull
   [:db/id
    {:location/city    [:city/name]}
-   {:location/company [:company/name]}])
+   {:location/company [:company/ident :company/name]}])
 
 (def ^:private cargo-pull
   '[:db/id :cargo/name :cargo/ident])
@@ -259,7 +259,7 @@
    :desc   "Deliver cargo from all 3 vineyards in California."})
 
 (defn- visit-all
-  "Helper for achievements that visit a set of locations (cities, etc.) 
+  "Helper for achievements that visit a set of locations (cities, etc.)
 
   Unless you have a complex `job-rule` rule (eg. specific cargo), you probably
   want to call the simpler `deliver-from-all` and `deliver-to-all`.
