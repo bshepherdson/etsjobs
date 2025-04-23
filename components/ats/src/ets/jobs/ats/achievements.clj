@@ -365,13 +365,41 @@
      {:progress {:type      :count
                  :total     total
                  :completed (min total matches)}
-      ;; TODO: Watch this one - I haven't tested it out.
       :jobs     (when (< matches total)
                   (d/q '[:find [(pull ?job pattern) ...]
                          :in $ % pattern :where
                          (match ?job)
                          (offer? ?job)]
                        db sd-rules pattern))})))
+
+(defn- delivery-frequencies
+  [db each-count loc-pattern job-pattern location-rule match-rule]
+  (let [df-rules   (conj rules match-rule location-rule)
+        locations  (d/q '[:find [?loc ...] :in $ % :where
+                          (location ?loc)]
+                        db df-rules)
+        matches-fn (fn [location]
+                     (or (d/q '[:find (count ?job) .
+                                :in $ % ?loc :where
+                                (match ?loc ?job)
+                                (delivery? ?job)]
+                              db df-rules location)
+                         0))
+        freqs      (->> locations
+                        (map (juxt #(d/pull db loc-pattern %)
+                                   (fn [loc]
+                                     {:total     each-count
+                                      :completed (matches-fn loc)})))
+                        (into {}))
+        unfinished (filter #(< (:completed %) (:total %)) (map second freqs))]
+    {:progress {:type  :frequencies
+                :freqs freqs}
+     :jobs     (when (seq unfinished)
+                 (d/q '[:find [(pull ?job job-pattern) ...]
+                        :in $ % job-pattern [?loc ...] :where
+                        (match ?loc ?job)
+                        (offer ?job)]
+                      db df-rules job-pattern locations))}))
 
 (defn- single-delivery
   ([db match-rule]
@@ -1142,15 +1170,74 @@
       [?loc   :location/city    ?city]
       [?city  :city/state       :state/tx]]))
 
-;; XXX: START HERE: Texas complete! Git commit, then start on Oklahoma or whatevs.
+;; ===========================================================================
+;; |                                                                         |
+;; |                                Texas                                    |
+;; |                                                                         |
+;; ===========================================================================
+
+;; School Bus Capital ========================================================
+;; Modeled as two parts, since they're unrelated.
+(def ^:private ach-school-bus-capital-hoods
+  {:id    :school-bus-capital-hoods
+   :name  "School Bus Capital - Hoods"
+   :group :state/ok
+   :desc  "Deliver 5 Bus Hood cargoes to the bus factory in Tulsa."})
+
+(def ^:private ach-school-bus-capital-buses
+  {:id    :school-bus-capital-buses
+   :name  "School Bus Capital - Buses"
+   :group :state/ok
+   :desc  "Deliver 5 School Bus cargoes from the bus factory in Tulsa."})
+
+(defmethod achievement-info :school-bus-capital-hoods [db _cheevo]
+  (counted-deliveries db 5 job-pull
+                      '[(match ?job)
+                        [?cmp  :company/ident    "yel_bus_pln"]
+                        [?loc  :location/company ?cmp]
+                        [?loc  :location/city    [:city/ident "tulsa"]]
+                        [?job  :job/target       ?loc]
+                        [?job  :job/cargo        [:cargo/ident "bus_hood"]]]))
+
+(defmethod achievement-info :school-bus-capital-buses [db _cheevo]
+  (counted-deliveries db 5 job-pull
+                      '[(match ?job)
+                        [?cmp  :company/ident    "yel_bus_pln"]
+                        [?loc  :location/company ?cmp]
+                        [?loc  :location/city    [:city/ident "tulsa"]]
+                        [?job  :job/source       ?loc]
+                        [?job  :job/cargo        [:cargo/ident "school_bus"]]]))
+
+;; Big Wheels Keep on Turning ================================================
+(def ^:private ach-big-wheels-keep-on-turning
+  {:id    :big-wheels-keep-on-turning
+   :name  "Big Wheels Keep on Turning"
+   :group :state/ok
+   :desc  "Complete 3 deliveries of Big Tires cargo from both tire factories
+          in Lawton and Ardmore."})
+
+(defmethod achievement-info :big-wheels-keep-on-turning [db _cheevo]
+  (delivery-frequencies
+    db 3 loc-pull job-pull
+    '[(location ?loc)
+      [?cmp  :company/ident    "dyn_car_pln"]
+      [?loc  :location/company ?cmp]
+      [?loc  :location/city    ?city]
+      (or [?city :city/ident "lawton"]
+          [?city :city/ident "ardmore"])]
+    '[(match ?loc ?job)
+      [?job :job/source ?loc]
+      [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
 
 (comment
   (def conn (#'ets.jobs.ats.interface/new-database))
-  (->> (d/q '[:find ?cargo-slug ?cargo-name :where
-              [?cargo :cargo/ident ?cargo-slug]
-              [?cargo :cargo/name  ?cargo-name]]
+  (->> (d/q
+         '[:find (count ?cargo-slug) . :where
+           [_ :cargo/ident ?cargo-slug]]
+         #_'[:find ?company-slug :where
+              [?company :company/name "Dynamix"]
+              [?company :company/ident ?company-slug]]
             @conn)
-       sort
        )
   )
 
@@ -1214,6 +1301,11 @@
     :cheevos [ach-shoreside-delivery
               ach-farm-away
               ach-cotton-bloom]}
+   {:group   :state/ok
+    :name    "Oklahoma"
+    :cheevos [ach-school-bus-capital-hoods
+              ach-school-bus-capital-buses
+              ach-big-wheels-keep-on-turning]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop

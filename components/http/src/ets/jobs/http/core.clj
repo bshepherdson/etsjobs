@@ -198,17 +198,31 @@
 (defmethod completed? :set/* [{:keys [needed]}]
   (empty? needed))
 
+(defn- progress-bar [nominator denominator]
+  [:div
+   [:progress {:max   denominator
+               :value nominator
+               :style "margin-right: 1em"}
+    #_(str completed " / " total)]
+   (str nominator " / " denominator)])
+
 (defmethod progress-block :count [_ctx {:keys [completed total]}]
-  (progress-frame
-   [:div
-    [:progress {:max   total
-                :value completed
-                :style "margin-right: 1em"}
-     (str completed " / " total)]
-    (str completed " / " total)]))
+  (progress-frame (progress-bar completed total)))
 
 (defmethod completed? :count [{:keys [completed total]}]
   (>= completed total))
+
+(defmethod progress-block :frequencies [_ctx {:keys [freqs]}]
+  (progress-frame
+   [:dl (mapcat (fn [[loc {:keys [completed total]}]]
+                  [[:dt (-> loc :location/city :city/name)]
+                   [:dd (progress-bar completed total)]])
+                freqs)]))
+
+(defmethod completed? :frequencies [{:keys [freqs]}]
+  (every? (fn [{:keys [completed total]}]
+            (>= completed total))
+          (vals freqs)))
 
 (def ^:private snake-river-pairs
   {["kennewick" "lewiston"]     "Kennewick - Lewiston"
