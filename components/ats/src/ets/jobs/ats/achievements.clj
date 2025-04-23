@@ -96,12 +96,12 @@
 
 (defmulti achievement-info
   "Queries for relevant jobs and the current progress of the achievement.
-  
+
   Returns `{:jobs [...], :progress {...}}`.
- 
+
   `:jobs` is a list of job offers which are available and would contribute to
   the achievement.
-  
+
   `:progress` is a map with one of several kinds, indicated by `:type`:
   - `:set/*` returns `{:completed [...], :needed [...]}`, with the inner values
     determined by `:set/city`, `:set/cargo`, `:set/company`.
@@ -263,29 +263,33 @@
 
   Unless you have a complex `job-rule` rule (eg. specific cargo), you probably
   want to call the simpler `deliver-from-all` and `deliver-to-all`.
-  
+
   - `loc-rule` is a rule `(location ?loc)` that finds the set of locations.
   - `job-rule` is a rule `(match ?job ?loc)` that (given one of the above `?loc`s)
     returns the valid jobs (offers or deliveries are filtered outside the rule!)"
-  [db progress-type loc-rule job-rule]
-  (let [va-rules  (conj rules loc-rule job-rule)
-        delivered (d/q '[:find [?loc ...]
-                         :in $ % :where
-                         (location ?loc)
-                         (match ?job ?loc)
-                         (delivery? ?job)]
-                       db va-rules)
-        all-locs  (d/q '[:find [?loc ...] :in $ % :where (location ?loc)]
-                       db va-rules)
-        needed    (remove (set delivered) all-locs)]
-    {:progress {:type      progress-type
-                :completed (d/pull-many db loc-pull delivered)
-                :needed    (d/pull-many db loc-pull needed)}
-     :jobs     (d/q '[:find [(pull ?job pattern) ...]
-                      :in $ % pattern [?needed ...] :where
-                      (match ?job ?needed)
-                      (offer? ?job)]
-                    db va-rules job-pull needed)}))
+  ([db progress-type loc-rule job-rule]
+   (visit-all db progress-type loc-rule job-rule
+              (fn [db locs]
+                (d/pull-many db loc-pull locs))))
+  ([db progress-type loc-rule job-rule progress-fn]
+   (let [va-rules  (conj rules loc-rule job-rule)
+         delivered (d/q '[:find [?loc ...]
+                          :in $ % :where
+                          (location ?loc)
+                          (match ?job ?loc)
+                          (delivery? ?job)]
+                        db va-rules)
+         all-locs  (d/q '[:find [?loc ...] :in $ % :where (location ?loc)]
+                        db va-rules)
+         needed    (remove (set delivered) all-locs)]
+     {:progress {:type      progress-type
+                 :completed (progress-fn db delivered)
+                 :needed    (progress-fn db needed)}
+      :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                       :in $ % pattern [?needed ...] :where
+                       (match ?job ?needed)
+                       (offer? ?job)]
+                     db va-rules job-pull needed)})))
 
 (defn- deliver-to-all [db progress-type loc-rule]
   (visit-all db progress-type loc-rule '[(match ?job ?loc)
@@ -295,10 +299,16 @@
   (visit-all db progress-type loc-rule '[(match ?job ?loc)
                                          [?job :job/source ?loc]]))
 
-(defn- deliver-to-or-from-all [db progress-type loc-rule]
-  (visit-all db progress-type loc-rule '[(match ?job ?loc)
-                                         (or [?job :job/source ?loc]
-                                             [?job :job/target ?loc])]))
+(def ^:private to-or-from-match-rule
+  '[(match ?job ?loc)
+    (or [?job :job/source ?loc]
+        [?job :job/target ?loc])])
+
+(defn- deliver-to-or-from-all
+  ([db progress-type loc-rule]
+   (visit-all db progress-type loc-rule to-or-from-match-rule))
+  ([db progress-type loc-rule progress-fn]
+   (visit-all db progress-type loc-rule to-or-from-match-rule progress-fn)))
 
 (defmethod achievement-info :cheers [db _cheevo]
   (visit-all db :set/city
@@ -1033,6 +1043,122 @@
                       [?job      :offer.special/template ?template]]
                     db rules oversize-pull (map :db/id needed))}))
 
+;; ===========================================================================
+;; |                                                                         |
+;; |                                Texas                                    |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Shoreside Delivery ========================================================
+(def ^:private ach-shoreside-delivery
+  {:id    :shoreside-delivery
+   :name  "Shoreside Delivery"
+   :group :state/tx
+   :desc  "Deliver cargo to or from all shipyards and cargo ports in Texas."})
+
+(defmethod achievement-info :shoreside-delivery [db _cheevo]
+  (deliver-to-or-from-all
+    db :set/strings
+    '[(location ?loc)
+      [(ground [["beaumont"       "port_bea"]
+                ["brownsville"    "port_bro"]
+                ["brownsville"    "ter_met_shp"]
+                ["corpus_christi" "port_cor"]
+                ["corpus_christi" "ter_met_shp"]
+                ["galveston"      "port_gal"]
+                ["houston"        "hds_met_shp"]
+                ["houston"        "port_hou"]])
+       [[?city-slug ?company-slug] ...]]
+      [?city :city/ident       ?city-slug]
+      [?loc  :location/city    ?city]
+      [?loc  :location/company ?comp]
+      [?comp :company/ident    ?company-slug]]
+    (fn [db locs]
+      (d/q '[:find [?str ...]
+             :in $ [?loc ...] :where
+             [?loc     :location/city    ?city]
+             [?city    :city/name        ?city-name]
+             [?loc     :location/company ?company]
+             [?company :company/name     ?company-name]
+             [(str ?city-name " - " ?company-name) ?str]]
+           db locs))))
+
+;; Farm Away =================================================================
+(def ^:private ach-farm-away
+  {:id    :farm-away
+   :name  "Farm Away"
+   :group :state/tx
+   :desc  "Deliver cargo to or from all farms and livestock auctions in Texas."})
+
+(defmethod achievement-info :farm-away [db _cheevo]
+  (deliver-to-or-from-all
+    db :set/strings
+    '[(location ?loc)
+      [(ground [["amarillo"    "gp_farm"]
+                ["dalhart"     "gp_farm"]
+                ["dalhart"     "gp_live_auc"]
+                ["fort_worth"  "gp_farm"]
+                ["fort_worth"  "gp_live_auc"]
+                ["lubbock"     "gp_farm"]
+                ["lubbock"     "gp_live_auc"]
+                ["san_antonio" "gp_farm"]
+                ["victoria"    "gp_live_auc"]
+                ["waco"        "gp_farm"]])
+       [[?city-slug ?company-slug] ...]]
+      [?city :city/ident       ?city-slug]
+      [?loc  :location/city    ?city]
+      [?loc  :location/company ?comp]
+      [?comp :company/ident    ?company-slug]]
+    (fn [db locs]
+      (d/q '[:find [?str ...]
+             :in $ [?loc ...] :where
+             [?loc     :location/city    ?city]
+             [?city    :city/name        ?city-name]
+             [?loc     :location/company ?company]
+             [?company :company/ident    ?company-ident]
+             [(ground [["gp_farm" "Farm"]
+                       ["gp_live_auc" "Auction"]])
+              [[?company-ident ?label] ...]]
+             [(str ?city-name " - " ?label) ?str]]
+           db locs))))
+
+;; Cotton Bloom ==============================================================
+(def ^:private ach-cotton-bloom
+  {:id    :cotton-bloom
+   :name  "Cotton Bloom"
+   :group :state/tx
+   :desc  "Complete 10 deliveries of at least one Cotton Lint, Cotton Seed and
+          Cotton Gin Harvester within Texas."})
+
+(defmethod achievement-info :cotton-bloom [db _cheevo]
+  (counted-deliveries
+    db 10 job-pull
+    '[(match ?job)
+      [(ground ["cott_harvest" "cott_lint" "cott_seed"]) [?cargo-slug ...]]
+      [?cargo :cargo/ident      ?cargo-slug]
+      [?job   :job/cargo        ?cargo]
+      (or [?job   :job/source       ?loc]
+          [?job   :job/target       ?loc])
+      [?loc   :location/city    ?city]
+      [?city  :city/state       :state/tx]]))
+
+;; XXX: START HERE: Texas complete! Git commit, then start on Oklahoma or whatevs.
+
+(comment
+  (def conn (#'ets.jobs.ats.interface/new-database))
+  (->> (d/q '[:find ?cargo-slug ?cargo-name :where
+              [?cargo :cargo/ident ?cargo-slug]
+              [?cargo :cargo/name  ?cargo-name]]
+            @conn)
+       sort
+       )
+  )
+
+;; ===========================================================================
+;; |                                                                         |
+;; |                         Achievement Groups                              |
+;; |                                                                         |
+;; ===========================================================================
 (def achievement-groups
   [{:group   :state/ca
     :name    "California"
@@ -1083,6 +1209,11 @@
               ach-major-miner-machinery
               ach-major-miner-silane
               ach-major-miner-talc]}
+   {:group   :state/tx
+    :name    "Texas"
+    :cheevos [ach-shoreside-delivery
+              ach-farm-away
+              ach-cotton-bloom]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
