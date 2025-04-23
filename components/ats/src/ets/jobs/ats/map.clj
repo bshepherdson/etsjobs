@@ -112,9 +112,21 @@
     (let [m (reduce (partial merge-with concat) {} (read-game-files))]
       (into [] cat [(:cities m) (:companies m) (:cargo m)]))))
 
+(def ^:private tx-missing-companies
+  [;; Lots of Wallbert locations were removed in 1.53.
+   {:company/ident "wal_food_mkt", :company/name "Wallbert"}
+   {:company/ident "wal_food_whs", :company/name "Wallbert"}
+   {:company/ident "wal_mkt",      :company/name "Wallbert"}
+   {:company/ident "wal_whs",      :company/name "Wallbert"}
+   ;; Several Darchelle Uzau locations in California were removed.
+   {:company/ident "du_farm",      :company/name "Darchelle Uzau"}
+   ;; Charged hasn't been updated(?) but still didn't get picked up.
+   {:company/ident "cha_el_mkt",   :company/name "Charged"}
+   {:company/ident "cha_el_whs",   :company/name "Charged"}])
+
 (def initial-data
   "Initial data for the ATS map, companies, etc."
-  (future (into [] cat [tx-states @tx-game-files])))
+  (future (into [] cat [tx-states tx-missing-companies @tx-game-files])))
 
 (def ^:private city-renames
   {"san_rafael" "oakland"

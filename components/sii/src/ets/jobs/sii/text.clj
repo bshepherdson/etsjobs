@@ -29,9 +29,11 @@
     Pointer        = TOKEN (<'.'> TOKEN)*
 
     Attributes     = Attribute (<eol> Attribute)*
-    Attribute      = TOKEN ArrayElement? <wsline> <':'> <wsline> Value
-    ArrayElement   = <'[]'>
-    <Value>        = String | Float | Placement | Floats | Signed | Unsigned | Fixeds | Bool | LocalPointer | Pointer
+    Attribute      = TOKEN Index? <wsline> <':'> <wsline> Value
+    AppendElement  = <'[]'>
+    IndexedElement = <'['> Unsigned <']'>
+    Index          = AppendElement | IndexedElement
+    <Value>        = String | Float | Placement | Floats | Hex | Signed | Unsigned | Fixeds | Bool | LocalPointer | Pointer
 
     String         = <'\"'> Char*  <'\"'>
     <Char>         = Escaped | #'[^\"\\\\]*'
@@ -43,6 +45,8 @@
     PlaceRight     = <LP> Unsigned <SEMI> Unsigned <COMMA> Unsigned <COMMA> Unsigned <COMMA> Unsigned <RP>
     Signed         = '-'? Unsigned
     Unsigned       = #'\\d+'
+    <Hex>          = <'0x'> HexInner
+    HexInner       = #'[0-9A-Fa-f]+'
     Fixeds         = <LP> Signed (<COMMA> Signed)+ <RP>
     Bool           = 'true' | 'false'"))
 
@@ -71,6 +75,9 @@
       (= x "-") -)
     (->clojure x)))
 
+(defmethod ->clojure :HexInner [[_hex-inner s]]
+  (Long/parseLong s 16))
+
 (defmethod ->clojure :Float [[_float s]]
   (parse-double s))
 
@@ -92,11 +99,21 @@
   {:type         (->clojure type-name)
    :sii/block-id (->clojure id)})
 
-(defn- +attr [unit {:keys [array? kw value]}]
-  (if array?
-    (if (contains? unit kw)
-      (update unit kw conj value)
-      (assoc unit kw [value]))
+(defn- min-vec [xs i]
+  (cond
+    (nil? xs)        (recur [] i)
+    (< i (count xs)) xs
+    :else            (recur (into xs [nil]) i)))
+
+(defn- +attr [unit {:keys [kw value]
+                    [ix index] :index}]
+  #_(prn (list '+attr kw value ix index))
+  (case ix
+    :AppendElement  (update unit kw (fnil conj []) value)
+    :IndexedElement (let [i (->clojure index)]
+                      (-> unit
+                          (update kw min-vec i)
+                          (assoc-in [kw i] value)))
     (assoc unit kw value)))
 
 (defmethod ->clojure :Unit [[_unit header attrs]]
@@ -104,12 +121,14 @@
     (reduce +attr base (->clojure attrs))))
 
 (defmethod ->clojure :Attribute [[_tag a b c]]
-  (let [label  (->clojure a)
-        array? (= b [:ArrayElement])]
+  (let [label (->clojure a)
+        index (when (and (vector? b)
+                         (= :Index (first b)))
+                (second b))]
     {:kw     (keyword label)
      :label  label
-     :value  (->clojure (if array? c b))
-     :array? array?}))
+     :value  (->clojure (if index c b))
+     :index  index}))
 
 ;; TODO: Only some structures are getting properly unwrapped, currently.
 
