@@ -692,8 +692,11 @@
    :group :state/co
    :desc  "Deliver a tower and nacelle to both Vitas Power wind turbine construction sites in Colorado."})
 
-(defn- multiple-cargoes-and-locs [db new-rules]
-  (let [mc-rules   (into rules new-rules)
+(defn- multiple-cargoes-and-locs [db new-rules & {:keys [str-fn]}]
+  (let [str-fn     (or str-fn
+                       (fn [city _company cargo]
+                         (str city " - " cargo)))
+        mc-rules   (into rules new-rules)
         required   (d/q '[:find ?cargo ?loc :in $ % :where
                           (loc-rule ?loc)
                           (cargo-rule ?cargo)]
@@ -706,12 +709,14 @@
         needed     (remove (set deliveries) required)
         details    (fn [pairs]
                      (d/q '[:find [?str ...]
-                            :in $ [[?cargo ?loc]] :where
-                            [?cargo :cargo/name    ?cargo-name]
-                            [?loc   :location/city ?city]
-                            [?city  :city/name     ?city-name]
-                            [(str ?city-name " - " ?cargo-name) ?str]]
-                          db pairs))]
+                            :in $ str-fn [[?cargo ?loc]] :where
+                            [?cargo :cargo/name       ?cargo-name]
+                            [?loc   :location/city    ?city]
+                            [?loc   :location/company ?comp]
+                            [?comp  :company/name     ?company-name]
+                            [?city  :city/name        ?city-name]
+                            [(str-fn ?city-name ?company-name ?cargo-name) ?str]]
+                          db str-fn pairs))]
     {:progress {:type      :set/strings
                 :completed (details deliveries)
                 :needed    (details needed)}
@@ -1229,15 +1234,95 @@
       [?job :job/source ?loc]
       [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
 
+;; ===========================================================================
+;; |                                                                         |
+;; |                               Kansas                                    |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Air Capital of the World ==================================================
+(def ^:private ach-air-capital-of-the-world
+  {:id    :air-capital-of-the-world
+   :name  "Air Capital of the World"
+   :group :state/ks
+   :desc  "Deliver an Aircraft Wing and Jet Engine Inlets to or from every
+          aviation depot in Wichita."})
+
+(defmethod achievement-info :air-capital-of-the-world [db _cheevo]
+  (multiple-cargoes-and-locs
+    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "jet_wing"]]
+         [(cargo-rule ?cargo) [?cargo :cargo/ident "air_eng2"]]
+         [(loc-rule ?loc)
+          [?city :city/ident       "wichita"]
+          [?loc  :location/city    ?city]
+          [?loc  :location/company ?comp]
+          (or [?comp :company/ident "dw_air_pln"]
+              [?comp :company/ident "aport_ict"]
+              [?comp :company/ident "gss_air_svc"])]
+         [(job-rule ?job ?cargo ?loc)
+          [?job :job/cargo  ?cargo]
+          (or [?job :job/source ?loc]
+              [?job :job/target ?loc])]]
+    :str-fn (fn [_city company cargo]
+              (str company " - " cargo))))
+
+;; Grain of Salt =============================================================
+;; Broken into two parts because of the nested condition.
+(def ^:private ach-grain-of-salt-factory
+  {:id    :grain-of-salt-factory
+   :name  "Grain of Salt - to Food Factory"
+   :group :state/ks
+   :desc  "Complete 2 deliveries from Hutchinson Salt Mine
+          to Food Factories in Kansas."})
+
+(def ^:private ach-grain-of-salt-anywhere
+  {:id    :grain-of-salt-anywhere
+   :name  "Grain of Salt - to Anywhere"
+   :group :state/ks
+   :desc  "Complete 6 total deliveries from Hutchinson Salt Mine."})
+
+(defmethod achievement-info :grain-of-salt-factory [db _cheevo]
+  (counted-deliveries
+   db 2 job-pull
+   '[(match ?job)
+     [?src  :location/company [:company/ident "nmq_min_qrys"]]
+     [?src  :location/city    [:city/ident "hutchinson"]]
+     [?job  :job/source       ?src]
+     [?job  :job/target       ?tgt]
+     [?tgt  :location/company [:company/ident "flv_food_pln"]]
+     [?tgt  :location/city    ?dest]
+     [?dest :city/state       :state/ks]]))
+
+(defmethod achievement-info :grain-of-salt-anywhere [db _cheevo]
+  (counted-deliveries
+   db 6 job-pull
+   '[(match ?job)
+     [?src  :location/company [:company/ident "nmq_min_qrys"]]
+     [?src  :location/city    [:city/ident "hutchinson"]]
+     [?job  :job/source       ?src]]))
+
 (comment
   (def conn (#'ets.jobs.ats.interface/new-database))
   (->> (d/q
-         '[:find (count ?cargo-slug) . :where
-           [_ :cargo/ident ?cargo-slug]]
-         #_'[:find ?company-slug :where
-              [?company :company/name "Dynamix"]
+         #_'[:find ?cargo-name ?cargo-slug :where
+           [?cargo :cargo/ident ?cargo-slug]
+           [?cargo :cargo/name  ?cargo-name]]
+         #_'[:find ?company-name ?company-slug :where
+              [?company :company/name ?company-name]
               [?company :company/ident ?company-slug]]
+         '[:find ?company-slug :where
+           #_[?comp :company/name     "NAMIQ"]
+           [?city :city/ident       "hutchinson"]
+           [?city :city/name        ?name]
+           [?city :city/state       ?state]
+           [?loc  :location/city    ?city]
+           [?loc  :location/company ?comp]
+           [?comp :company/ident    ?company-slug]]
+         #_'[:find ?city-name ?city-slug :where
+           [?city :city/name  ?city-name]
+           [?city :city/ident ?city-slug]]
             @conn)
+       sort
        )
   )
 
@@ -1306,6 +1391,11 @@
     :cheevos [ach-school-bus-capital-hoods
               ach-school-bus-capital-buses
               ach-big-wheels-keep-on-turning]}
+   {:group   :state/ks
+    :name    "Kansas"
+    :cheevos [ach-air-capital-of-the-world
+              ach-grain-of-salt-factory
+              ach-grain-of-salt-anywhere]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
