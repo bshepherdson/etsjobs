@@ -1420,28 +1420,82 @@
   (-> (deliver-to-all db :set/company
                       '[(location ?loc)
                         [?loc :location/city [:city/ident "hot_springs"]]])
-      (assoc-in [:progress :special] :spa-city)))
+      (assoc-in [:progress :sufficient] 5)))
 
-;; TODO: Implement Missouri achievements.
+;; ===========================================================================
+;; |                                                                         |
+;; |                              Missouri                                   |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Subterranean ==============================================================
+(def ^:private ach-subterranean
+  {:id    :subterranean
+   :name  "Subterranean"
+   :group :state/mo
+   :desc  "Complete a delivery to at least 2 underground Terrastore warehouses."})
+
+(defmethod achievement-info :subterranean [db _cheevo]
+  (-> (deliver-to-all db :set/city
+                      '[(location ?loc)
+                        [?loc  :location/company [:company/ident "trs_whs"]]
+                        [?loc  :location/city    ?city]
+                        [?city :city/state       :state/mo]])
+      (assoc-in [:progress :sufficient] 2)))
+
+;; What a Blast! =============================================================
+(def ^:private ach-what-a-blast-ingredients
+  {:id    :what-a-blast-ingredients
+   :name  "What a Blast! - Ingredients"
+   :group :state/mo
+   :desc  [:p
+           [:strong "Step 1: "]
+           "Deliver ammonia and sulphuric acid to NAMIQ in Joplin."]})
+
+(def ^:private ach-what-a-blast-dynamite
+  {:id    :what-a-blast-dynamite
+   :name  "What a Blast! - Dynamite"
+   :group :state/mo
+   :desc  [:div
+           [:strong "Step 2: Cannot be completed until Step 1 is done."]
+           [:p "Deliver dynamite from NAMIQ in Joplin."]]})
+
+(defmethod achievement-info :what-a-blast-ingredients [db _cheevo]
+  (deliver-cargoes
+    db job-pull
+    '[(cargo-rule ?cargo)
+      (or [?cargo :cargo/ident "ammonia"]
+          [?cargo :cargo/ident "sulfuric"])]
+    '[(job-rule ?job ?cargo)
+      [?job :job/cargo        ?cargo]
+      [?job :job/target       ?loc]
+      [?loc :location/city    [:city/ident "joplin"]]
+      [?loc :location/company [:company/ident "nmq_min_pln2"]]]))
+
+(defmethod achievement-info :what-a-blast-dynamite [db _cheevo]
+  (single-delivery
+   db '[(match ?job)
+        [?loc  :location/city    [:city/ident "joplin"]]
+        [?loc  :location/company [:company/ident "nmq_min_pln2"]]
+        [?job  :job/source       ?loc]
+        [?job  :job/cargo        [:cargo/ident "dynamite"]]]))
 
 (comment
   (def conn (#'ets.jobs.ats.interface/new-database))
   (->> (d/q
-         #_'[:find ?cargo-name ?cargo-slug :where
+         '[:find ?cargo-name ?cargo-slug :where
            [?cargo :cargo/ident ?cargo-slug]
            [?cargo :cargo/name  ?cargo-name]]
          #_'[:find ?company-name ?company-slug :where
               [?company :company/name ?company-name]
               [?company :company/ident ?company-slug]]
          #_'[:find ?company-slug :where
-           #_[?comp :company/name     "NAMIQ"]
-           [?city :city/ident       "hutchinson"]
-           [?city :city/name        ?name]
-           [?city :city/state       ?state]
+           [?comp :company/name     "NAMIQ"]
+           [?city :city/ident       "joplin"]
            [?loc  :location/city    ?city]
            [?loc  :location/company ?comp]
            [?comp :company/ident    ?company-slug]]
-         '[:find ?city-name ?city-slug ?state :where
+         #_'[:find ?city-name ?city-slug ?state :where
            [?city :city/name  ?city-name]
            [?city :city/ident ?city-slug]
            [?city :city/state ?city-state]
@@ -1542,6 +1596,11 @@
     :cheevos [ach-paper-trail-logs
               ach-paper-trail-paper
               ach-spa-city]}
+   {:group   :state/mo
+    :name    "Missouri"
+    :cheevos [ach-subterranean
+              ach-what-a-blast-ingredients
+              ach-what-a-blast-dynamite]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
