@@ -1301,6 +1301,129 @@
      [?src  :location/city    [:city/ident "hutchinson"]]
      [?job  :job/source       ?src]]))
 
+;; ===========================================================================
+;; |                                                                         |
+;; |                              Nebraska                                   |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Vehicle Dealer ============================================================
+(def ^:private ach-vehicle-dealer
+  {:id    :vehicle-dealer
+   :name  "Vehicle Dealer"
+   :group :state/ne
+   :desc  "Complete 3 deliveries from the Utility Vehicle Factory in Lincoln
+          to each of the RV dealers in Columbus, Norfolk and Omaha."})
+
+(defonce last-db (atom nil))
+
+(defmethod achievement-info :vehicle-dealer [db _cheevo]
+  (reset! last-db db)
+  (visit-all db :set/city
+             '[(location ?loc)
+               [(ground ["columbus" "norfolk" "omaha"]) [?city-slug ...]]
+               [?city :city/ident       ?city-slug]
+               [?loc  :location/city    ?city]
+               [?loc  :location/company [:company/ident "wan_car_dlr"]]]
+             '[(match ?job ?tgt)
+               [?job :job/target       ?tgt]
+               [?job :job/source       ?src]
+               [?src :location/city    [:city/ident "lincoln"]]
+               [?src :location/company [:company/ident "out_car_pln"]]]))
+
+;; Agriculture Expert ========================================================
+(def ^:private ach-agriculture-expert
+  {:id    :agriculture-expert
+   :name  "Agriculture Expert"
+   :group :state/ne
+   :desc  [:div
+           [:p "Complete one delivery of corn, grain, potatoes and soybeans
+               from or within Nebraska."]
+           [:strong "NOTE: Not sure if the Grain and Potatoes are duplicated?"]]})
+
+(defmethod achievement-info :agriculture-expert [db _cheevo]
+  (deliver-cargoes
+    db job-pull
+    '[(cargo-rule ?cargo)
+      (or [?cargo :cargo/ident "corn"]
+          ;; TODO: Check if these are interchangeable.
+          [?cargo :cargo/ident "grain"]
+          [?cargo :cargo/ident "grain_b"]
+          [?cargo :cargo/ident "potatoes"]
+          [?cargo :cargo/ident "potatoes_b"]
+          [?cargo :cargo/ident "soybean_b"])]
+    '[(job-rule ?job ?cargo)
+      [?job  :job/cargo     ?cargo]
+      [?job  :job/source    ?loc]
+      [?loc  :location/city ?city]
+      [?city :city/state    :state/ne]]))
+
+;; ===========================================================================
+;; |                                                                         |
+;; |                              Arkansas                                   |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Paper Trail ===============================================================
+;; Splitting these into two for simpler rules.
+(def ^:private ach-paper-trail-logs
+  {:id    :paper-trail-logs
+   :name  "Paper Trail - Logs"
+   :group :state/ar
+   :desc  [:div
+           [:p "Complete 3 deliveries of Logs to Chuck & Jack's within Arkansas."]
+           [:strong "NOTE: Untested! Look out for this one returning jobs."]]})
+
+(def ^:private ach-paper-trail-paper
+  {:id    :paper-trail-paper
+   :name  "Paper Trail - Wood Shavings"
+   :group :state/ar
+   :desc  "Complete 3 deliveries of Wood Shavings to Page & Price Paper
+          within Arkansas."})
+
+(defmethod achievement-info :paper-trail-logs [db _cheevo]
+  (counted-deliveries
+    db 3 job-pull
+    '[(match ?job)
+      [?comp     :company/ident    "ch_wd_saw"] ; Page & Price Paper factory
+      [?tgt      :location/company ?comp]
+      [?tgt      :location/city    ?tgt-city]
+      [?tgt-city :city/state       :state/ar]
+      [?job      :job/target       ?tgt]
+      [?job      :job/cargo        [:cargo/ident "logs"]]
+      [?job      :job/source       ?src]
+      [?src      :location/city    ?src-city]
+      [?src-city :city/state       :state/ar]]))
+
+(defmethod achievement-info :paper-trail-paper [db _cheevo]
+  (counted-deliveries
+    db 3 job-pull
+    '[(match ?job)
+      [?comp     :company/ident    "pnp_wd_pln"] ; Page & Price Paper factory
+      [?tgt      :location/company ?comp]
+      [?tgt      :location/city    ?tgt-city]
+      [?tgt-city :city/state       :state/ar]
+      [?job      :job/target       ?tgt]
+      [?job      :job/cargo        [:cargo/ident "wshavings"]]
+      [?job      :job/source       ?src]
+      [?src      :location/city    ?src-city]
+      [?src-city :city/state       :state/ar]]))
+
+;; Spa City ==================================================================
+(def ^:private ach-spa-city
+  {:id    :spa-city
+   :name  "Spa City"
+   :group :state/ar
+   :desc  "Complete a delivery to 5 different companies in Hot Springs."})
+
+(defmethod achievement-info :spa-city [db _cheevo]
+  (-> (deliver-to-all db :set/company
+                      '[(location ?loc)
+                        [?loc :location/city [:city/ident "hot_springs"]]])
+      (assoc-in [:progress :special] :spa-city)))
+
+;; TODO: Implement Missouri achievements.
+
 (comment
   (def conn (#'ets.jobs.ats.interface/new-database))
   (->> (d/q
@@ -1310,7 +1433,7 @@
          #_'[:find ?company-name ?company-slug :where
               [?company :company/name ?company-name]
               [?company :company/ident ?company-slug]]
-         '[:find ?company-slug :where
+         #_'[:find ?company-slug :where
            #_[?comp :company/name     "NAMIQ"]
            [?city :city/ident       "hutchinson"]
            [?city :city/name        ?name]
@@ -1318,10 +1441,24 @@
            [?loc  :location/city    ?city]
            [?loc  :location/company ?comp]
            [?comp :company/ident    ?company-slug]]
-         #_'[:find ?city-name ?city-slug :where
+         '[:find ?city-name ?city-slug ?state :where
            [?city :city/name  ?city-name]
-           [?city :city/ident ?city-slug]]
-            @conn)
+           [?city :city/ident ?city-slug]
+           [?city :city/state ?city-state]
+           [?city-state :db/ident ?state]]
+
+         #_'[:find ?city ?loc :where
+           [(ground ["columbus" "norfolk" "omaha"]) [?city-slug ...]]
+           [?city :city/ident       ?city-slug]
+           [?loc  :location/city    ?city]
+           [?loc  :location/company [:company/ident "wan_car_dlr"]]]
+
+         #_'[:find ?loc :where
+           [?job :job/source       ?loc]
+           [?loc :location/city    [:city/ident "lincoln"]]
+           [?loc :location/company [:company/ident "out_car_pln"]]]
+
+            @last-db)
        sort
        )
   )
@@ -1396,6 +1533,15 @@
     :cheevos [ach-air-capital-of-the-world
               ach-grain-of-salt-factory
               ach-grain-of-salt-anywhere]}
+   {:group   :state/ne
+    :name    "Nebraska"
+    :cheevos [ach-vehicle-dealer
+              ach-agriculture-expert]}
+   {:group   :state/ar
+    :name    "Arkansas"
+    :cheevos [ach-paper-trail-logs
+              ach-paper-trail-paper
+              ach-spa-city]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop

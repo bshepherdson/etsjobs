@@ -195,8 +195,11 @@
               :set/strings :set/oversize-route]]
   (derive type :set/*))
 
-(defmethod completed? :set/* [{:keys [needed]}]
-  (empty? needed))
+(defmethod progress-block :spa-city [ctx progress]
+  (progress-block ctx (dissoc progress :special)))
+
+(defmethod completed? :spa-city [{:keys [completed]}]
+  (>= (count completed) 5))
 
 (defn- progress-bar [nominator denominator]
   [:div
