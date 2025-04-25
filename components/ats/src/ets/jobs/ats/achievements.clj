@@ -92,7 +92,10 @@
      [?job :delivery/fines 0]
      [?job :delivery/damage-ratio 0.0]
      [?job :delivery/remaining-time ?remaining]
-     [(>= ?remaining 0)]]])
+     [(>= ?remaining 0)]]
+    [(in-state? ?loc ?state)
+     [?loc   :location/city ?city]
+     [?city  :city/state    ?state]]])
 
 (defmulti achievement-info
   "Queries for relevant jobs and the current progress of the achievement.
@@ -1170,10 +1173,10 @@
       [(ground ["cott_harvest" "cott_lint" "cott_seed"]) [?cargo-slug ...]]
       [?cargo :cargo/ident      ?cargo-slug]
       [?job   :job/cargo        ?cargo]
-      (or [?job   :job/source       ?loc]
-          [?job   :job/target       ?loc])
-      [?loc   :location/city    ?city]
-      [?city  :city/state       :state/tx]]))
+      [?job   :job/source       ?src]
+      (in-state? ?src :state/tx)
+      [?job   :job/target       ?tgt]
+      (in-state? ?tgt :state/tx)]))
 
 ;; ===========================================================================
 ;; |                                                                         |
