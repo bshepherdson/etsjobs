@@ -157,11 +157,11 @@
 (defmethod achievement-info :i-thought-this-should-be-heavy
   [db _cheevo]
   (deliver-cargoes
-    db job-pull
-    '[(cargo-rule ?cargo)
-      [?cargo :cargo/heavy? true]]
-    '[(job-rule ?job ?cargo)
-      [?job :job/cargo ?cargo]]))
+   db job-pull
+   '[(cargo-rule ?cargo)
+     [?cargo :cargo/heavy? true]]
+   '[(job-rule ?job ?cargo)
+     [?job :job/cargo ?cargo]]))
 
 ;; Heavy, but not a Bull in a China Shop =====================================
 (def ^:private ach-heavy-but-not-a-bull-in-a-china-shop
@@ -202,19 +202,19 @@
 ;; TODO: Implement this one? It's a pain to implement here but isn't hard to
 ;; search for in-game. Also I already have it unlocked.
 #_(def ^:private ach-bigger-cargo-bigger-profit
-  {:id      :bigger-cargo-bigger-profit
-   :name    "Bigger Cargo, Bigger Profit"
-   :group   :group/heavy-cargo
-   :desc    "Earn $100,000 on 5 CONSECUTIVE heavy cargo deliveries. (Job list shows plausible jobs worth at least $18k.) "})
+    {:id      :bigger-cargo-bigger-profit
+     :name    "Bigger Cargo, Bigger Profit"
+     :group   :group/heavy-cargo
+     :desc    "Earn $100,000 on 5 CONSECUTIVE heavy cargo deliveries. (Job list shows plausible jobs worth at least $18k.) "})
 
 #_(defmethod achievement-progress :bigger-cargo-bigger-profit
-  [db _cheevo]
-  (let [last-5 (->> (d/q '[:find (max 5 ?end-time) . :where
-                           [?job :delivery/end-time ?end-time]]
-                         db)
-                    (d/pull-many job-pull)
-                    reverse)]
-    last-5))
+    [db _cheevo]
+    (let [last-5 (->> (d/q '[:find (max 5 ?end-time) . :where
+                             [?job :delivery/end-time ?end-time]]
+                           db)
+                      (d/pull-many job-pull)
+                      reverse)]
+      last-5))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -294,18 +294,24 @@
                        (offer? ?job)]
                      db va-rules job-pull needed)})))
 
-(defn- deliver-to-all [db progress-type loc-rule]
-  (visit-all db progress-type loc-rule '[(match ?job ?loc)
-                                         [?job :job/target ?loc]]))
+(def ^:private to-match-rule
+  '[(match ?job ?loc)
+    [?job :job/target ?loc]])
 
-(defn- deliver-from-all [db progress-type loc-rule]
-  (visit-all db progress-type loc-rule '[(match ?job ?loc)
-                                         [?job :job/source ?loc]]))
+(def ^:private from-match-rule
+  '[(match ?job ?loc)
+    [?job :job/source ?loc]])
 
 (def ^:private to-or-from-match-rule
   '[(match ?job ?loc)
     (or [?job :job/source ?loc]
         [?job :job/target ?loc])])
+
+(defn- deliver-to-all [db progress-type loc-rule]
+  (visit-all db progress-type loc-rule to-match-rule))
+
+(defn- deliver-from-all [db progress-type loc-rule]
+  (visit-all db progress-type loc-rule from-match-rule))
 
 (defn- deliver-to-or-from-all
   ([db progress-type loc-rule]
@@ -314,7 +320,7 @@
    (visit-all db progress-type loc-rule to-or-from-match-rule progress-fn)))
 
 (defmethod achievement-info :cheers [db _cheevo]
-  (visit-all db :set/city
+  (visit-all db :set/company
              '[(location ?loc)
                [?company :company/ident    "du_farm"]
                [?loc     :location/company ?company]
@@ -322,7 +328,6 @@
                [?city    :city/state       :state/ca]]
              '[(match ?job ?loc)
                [?job :job/source ?loc]]))
-
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -344,7 +349,6 @@
                     [?city :city/ident       ?city-slug]
                     [?loc  :location/city    ?city]
                     [?loc  :location/company [:company/ident "cm_min_qry"]]]))
-
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -462,12 +466,12 @@
 
 (defmethod achievement-info :lumberjack [db _cheevo]
   (deliver-from-all
-    db :set/city
-    '[(location ?loc)
-      [(ground ["astoria" "bend" "medford" "newport" "salem"]) [?city-slug ...]]
-      [?city :city/ident       ?city-slug]
-      [?loc  :location/city    ?city]
-      [?loc  :location/company [:company/ident "dg_wd_hrv"]]]))
+   db :set/city
+   '[(location ?loc)
+     [(ground ["astoria" "bend" "medford" "newport" "salem"]) [?city-slug ...]]
+     [?city :city/ident       ?city-slug]
+     [?loc  :location/city    ?city]
+     [?loc  :location/company [:company/ident "dg_wd_hrv"]]]))
 
 ;; Cabbage to Cabbage ========================================================
 (def ^:private ach-cabbage-to-cabbage
@@ -503,7 +507,6 @@
                         (cabbage ?job)
                         (offer? ?job)]
                       db cabbage-rules job-pull))}))
-
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -579,14 +582,14 @@
 
 (defmethod achievement-info :this-one-is-mine [db _cheevo]
   (deliver-to-or-from-all
-    db :set/city
-    '[(location ?loc)
-      [(ground ["salt_lake" "cedar_city" "vernal"]) [?city-slug ...]]
-      [?city :city/ident       ?city-slug]
-      [?loc  :location/city    ?city]
-      [?loc  :location/company ?comp]
-      [(ground ["cm_min_qry" "cm_min_str"]) [?company-slug ...]]
-      [?comp :company/ident    ?company-slug]]))
+   db :set/city
+   '[(location ?loc)
+     [(ground ["salt_lake" "cedar_city" "vernal"]) [?city-slug ...]]
+     [?city :city/ident       ?city-slug]
+     [?loc  :location/city    ?city]
+     [?loc  :location/company ?comp]
+     [(ground ["cm_min_qry" "cm_min_str"]) [?company-slug ...]]
+     [?comp :company/ident    ?company-slug]]))
 
 ;; Some Like it Salty ========================================================
 (def ^:private ach-some-like-it-salty
@@ -597,9 +600,9 @@
 
 (defmethod achievement-info :some-like-it-salty [db _cheevo]
   (deliver-from-all
-    db :set/company
-    '[(location ?loc)
-      [?loc  :location/city    [:city/ident "salt_lake"]]]))
+   db :set/company
+   '[(location ?loc)
+     [?loc  :location/city    [:city/ident "salt_lake"]]]))
 
 ;; Pump it Up ================================================================
 (def ^:private ach-pump-it-up
@@ -612,13 +615,13 @@
 ;; Maybe Steam is counting across profiles? Multiple company slugs?
 (defmethod achievement-info :pump-it-up [db _cheevo]
   (counted-deliveries
-    db 5 job-pull
-    '[(match ?job)
-      [?job  :job/cargo        [:cargo/ident "frac_tank"]]
-      [?job  :job/target       ?loc]
-      [?loc  :location/city    ?city]
-      [?city :city/state       :state/ut]
-      [?loc  :location/company [:company/ident "gal_oil_sit"]]]))
+   db 5 job-pull
+   '[(match ?job)
+     [?job  :job/cargo        [:cargo/ident "frac_tank"]]
+     [?job  :job/target       ?loc]
+     [?loc  :location/city    ?city]
+     [?city :city/state       :state/ut]
+     [?loc  :location/company [:company/ident "gal_oil_sit"]]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -635,13 +638,13 @@
 
 (defmethod achievement-info :grown-in-idaho [db _cheevo]
   (counted-deliveries
-    db 5 job-pull
-    '[(match ?job)
-      [?job  :job/cargo        [:cargo/ident "potatoes"]]
-      [?job  :job/source       ?loc]
-      [?loc  :location/city    ?city]
-      [?city :city/state       :state/id]
-      [?loc  :location/company [:company/ident "sc_frm"]]]))
+   db 5 job-pull
+   '[(match ?job)
+     [?job  :job/cargo        [:cargo/ident "potatoes"]]
+     [?job  :job/source       ?loc]
+     [?loc  :location/city    ?city]
+     [?city :city/state       :state/id]
+     [?loc  :location/company [:company/ident "sc_frm"]]]))
 
 ;; Along the Snake River =====================================================
 (def ^:private ach-along-the-snake-river
@@ -731,15 +734,15 @@
 
 (defmethod achievement-info :energy-from-above [db _cheevo]
   (multiple-cargoes-and-locs
-    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "windml_eng"]]
-         [(cargo-rule ?cargo) [?cargo :cargo/ident "windml_tube"]]
-         [(loc-rule ?loc)
-          [?loc  :location/company [:company/ident "vp_epw_sit"]]
-          [?loc  :location/city    ?city]
-          [?city :city/state       :state/co]]
-         [(job-rule ?job ?cargo ?loc)
-          [?job :job/cargo  ?cargo]
-          [?job :job/target ?loc]]]))
+   db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "windml_eng"]]
+        [(cargo-rule ?cargo) [?cargo :cargo/ident "windml_tube"]]
+        [(loc-rule ?loc)
+         [?loc  :location/company [:company/ident "vp_epw_sit"]]
+         [?loc  :location/city    ?city]
+         [?city :city/state       :state/co]]
+        [(job-rule ?job ?cargo ?loc)
+         [?job :job/cargo  ?cargo]
+         [?job :job/target ?loc]]]))
 
 ;; Gold Rush =================================================================
 (def ^:private ach-gold-rush
@@ -791,17 +794,17 @@
 (defmethod achievement-info :big-boy
   [db _cheevo]
   (deliver-cargoes
-    db job-pull
-    '[(cargo-rule ?cargo)
-      (or [?cargo :cargo/ident "train_part"]
-          [?cargo :cargo/ident "tamp_machine"]
-          [?cargo :cargo/ident "rails"])]
-    '[(job-rule ?job ?cargo)
-      [?job :job/cargo ?cargo]
-      [?loc :location/city [:city/ident "cheyenne"]]
-      [?loc :location/company [:company/ident "aml_rail_str"]]
-      (or [?job :job/source ?loc]
-          [?job :job/target ?loc])]))
+   db job-pull
+   '[(cargo-rule ?cargo)
+     (or [?cargo :cargo/ident "train_part"]
+         [?cargo :cargo/ident "tamp_machine"]
+         [?cargo :cargo/ident "rails"])]
+   '[(job-rule ?job ?cargo)
+     [?job :job/cargo ?cargo]
+     [?loc :location/city [:city/ident "cheyenne"]]
+     [?loc :location/company [:company/ident "aml_rail_str"]]
+     (or [?job :job/source ?loc]
+         [?job :job/target ?loc])]))
 
 ;; Buffalo Bill ==============================================================
 (def ^:private ach-buffalo-bill
@@ -832,7 +835,6 @@
                       (buffalo-bill? ?job)
                       (offer? ?job)]
                     db buffalo-bill-rules job-pull)}))
-
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -885,17 +887,17 @@
 
 (defmethod achievement-info :power-on [db _cheevo]
   (multiple-cargoes-and-locs
-    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "circuit_brk"]]
-         [(cargo-rule ?cargo) [?cargo :cargo/ident "util_pole"]]
-         [(loc-rule ?loc)
-          [?loc :location/company [:company/ident "frd_epw_sit"]]
-          [?loc :location/city ?city]
-          (or [?city :city/ident "butte"]
-              [?city :city/ident "glasgow_mt"]
-              [?city :city/ident "havre"])]
-         [(job-rule ?job ?cargo ?loc)
-          [?job :job/cargo ?cargo]
-          [?job :job/target ?loc]]]))
+   db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "circuit_brk"]]
+        [(cargo-rule ?cargo) [?cargo :cargo/ident "util_pole"]]
+        [(loc-rule ?loc)
+         [?loc :location/company [:company/ident "frd_epw_sit"]]
+         [?loc :location/city ?city]
+         (or [?city :city/ident "butte"]
+             [?city :city/ident "glasgow_mt"]
+             [?city :city/ident "havre"])]
+        [(job-rule ?job ?cargo ?loc)
+         [?job :job/cargo ?cargo]
+         [?job :job/target ?loc]]]))
 
 ;; Major Miner ===============================================================
 ;; Split into three, since there's three unrelated tasks here.
@@ -907,17 +909,17 @@
 
 (defn- major-miner [db direction company cities cargo]
   (single-delivery
-    db
-    (into ['(match ?job)
-           ['?job  direction '?tgt]
-           ['?tgt  :location/company [:company/ident company]]
-           [(list  'ground cities)   '[?city-slug ...]]
-           '[?tgt  :location/city    ?city]
-           '[?city :city/ident       ?city-slug]]
-          cargo)
-    '[(delivery-rule ?job)
-      (match    ?job)
-      (perfect? ?job)]))
+   db
+   (into ['(match ?job)
+          ['?job  direction '?tgt]
+          ['?tgt  :location/company [:company/ident company]]
+          [(list  'ground cities)   '[?city-slug ...]]
+          '[?tgt  :location/city    ?city]
+          '[?city :city/ident       ?city-slug]]
+         cargo)
+   '[(delivery-rule ?job)
+     (match    ?job)
+     (perfect? ?job)]))
 
 (defmethod achievement-info :major-miner-machinery [db _cheevo]
   (major-miner db :job/target "nmq_min_qry" ["bozeman"] nil))
@@ -942,7 +944,6 @@
   (major-miner db :job/source "nmq_min_plnt" ["bozeman" "butte"]
                '[[?job :job/cargo [:cargo/ident "talc_pwdr"]]]))
 
-
 ;; ===========================================================================
 ;; |                                                                         |
 ;; |                               Oversize                                  |
@@ -959,8 +960,7 @@
 (defmethod achievement-info :size-matters [db _cheevo]
   (single-delivery db oversize-pull
                    '[(match ?job)
-                     [?job :offer.special/template _]
-                     ]
+                     [?job :offer.special/template _]]
                    '[(delivery-rule ?job)
                      [?job :job/type :job.type/spec_oversize]
                      (perfect? ?job)]))
@@ -975,13 +975,13 @@
 (defn- specific-heavy-cargo [db cargo-ref]
   (single-delivery db oversize-pull
                    ['(match ?job)
-                     ['?tmp :template.special/cargo cargo-ref]
-                     '[?job :offer.special/template ?tmp]]
+                    ['?tmp :template.special/cargo cargo-ref]
+                    '[?job :offer.special/template ?tmp]]
                    ['(delivery-rule ?job)
-                     '[?job :job/type  :job.type/spec_oversize]
-                     ['?job :job/cargo cargo-ref]
+                    '[?job :job/type  :job.type/spec_oversize]
+                    ['?job :job/cargo cargo-ref]
                      ;'[?job :db/ident _]
-                     '(perfect? ?job)]))
+                    '(perfect? ?job)]))
 
 (defmethod achievement-info :get-to-the-chopper [db _cheevo]
   (specific-heavy-cargo db [:cargo/ident "helicopter"]))
@@ -1094,30 +1094,30 @@
 
 (defmethod achievement-info :shoreside-delivery [db _cheevo]
   (deliver-to-or-from-all
-    db :set/strings
-    '[(location ?loc)
-      [(ground [["beaumont"       "port_bea"]
-                ["brownsville"    "port_bro"]
-                ["brownsville"    "ter_met_shp"]
-                ["corpus_christi" "port_cor"]
-                ["corpus_christi" "ter_met_shp"]
-                ["galveston"      "port_gal"]
-                ["houston"        "hds_met_shp"]
-                ["houston"        "port_hou"]])
-       [[?city-slug ?company-slug] ...]]
-      [?city :city/ident       ?city-slug]
-      [?loc  :location/city    ?city]
-      [?loc  :location/company ?comp]
-      [?comp :company/ident    ?company-slug]]
-    (fn [db locs]
-      (d/q '[:find [?str ...]
-             :in $ [?loc ...] :where
-             [?loc     :location/city    ?city]
-             [?city    :city/name        ?city-name]
-             [?loc     :location/company ?company]
-             [?company :company/name     ?company-name]
-             [(str ?city-name " - " ?company-name) ?str]]
-           db locs))))
+   db :set/strings
+   '[(location ?loc)
+     [(ground [["beaumont"       "port_bea"]
+               ["brownsville"    "port_bro"]
+               ["brownsville"    "ter_met_shp"]
+               ["corpus_christi" "port_cor"]
+               ["corpus_christi" "ter_met_shp"]
+               ["galveston"      "port_gal"]
+               ["houston"        "hds_met_shp"]
+               ["houston"        "port_hou"]])
+      [[?city-slug ?company-slug] ...]]
+     [?city :city/ident       ?city-slug]
+     [?loc  :location/city    ?city]
+     [?loc  :location/company ?comp]
+     [?comp :company/ident    ?company-slug]]
+   (fn [db locs]
+     (d/q '[:find [?str ...]
+            :in $ [?loc ...] :where
+            [?loc     :location/city    ?city]
+            [?city    :city/name        ?city-name]
+            [?loc     :location/company ?company]
+            [?company :company/name     ?company-name]
+            [(str ?city-name " - " ?company-name) ?str]]
+          db locs))))
 
 ;; Farm Away =================================================================
 (def ^:private ach-farm-away
@@ -1128,35 +1128,35 @@
 
 (defmethod achievement-info :farm-away [db _cheevo]
   (deliver-to-or-from-all
-    db :set/strings
-    '[(location ?loc)
-      [(ground [["amarillo"    "gp_farm"]
-                ["dalhart"     "gp_farm"]
-                ["dalhart"     "gp_live_auc"]
-                ["fort_worth"  "gp_farm"]
-                ["fort_worth"  "gp_live_auc"]
-                ["lubbock"     "gp_farm"]
-                ["lubbock"     "gp_live_auc"]
-                ["san_antonio" "gp_farm"]
-                ["victoria"    "gp_live_auc"]
-                ["waco"        "gp_farm"]])
-       [[?city-slug ?company-slug] ...]]
-      [?city :city/ident       ?city-slug]
-      [?loc  :location/city    ?city]
-      [?loc  :location/company ?comp]
-      [?comp :company/ident    ?company-slug]]
-    (fn [db locs]
-      (d/q '[:find [?str ...]
-             :in $ [?loc ...] :where
-             [?loc     :location/city    ?city]
-             [?city    :city/name        ?city-name]
-             [?loc     :location/company ?company]
-             [?company :company/ident    ?company-ident]
-             [(ground [["gp_farm" "Farm"]
-                       ["gp_live_auc" "Auction"]])
-              [[?company-ident ?label] ...]]
-             [(str ?city-name " - " ?label) ?str]]
-           db locs))))
+   db :set/strings
+   '[(location ?loc)
+     [(ground [["amarillo"    "gp_farm"]
+               ["dalhart"     "gp_farm"]
+               ["dalhart"     "gp_live_auc"]
+               ["fort_worth"  "gp_farm"]
+               ["fort_worth"  "gp_live_auc"]
+               ["lubbock"     "gp_farm"]
+               ["lubbock"     "gp_live_auc"]
+               ["san_antonio" "gp_farm"]
+               ["victoria"    "gp_live_auc"]
+               ["waco"        "gp_farm"]])
+      [[?city-slug ?company-slug] ...]]
+     [?city :city/ident       ?city-slug]
+     [?loc  :location/city    ?city]
+     [?loc  :location/company ?comp]
+     [?comp :company/ident    ?company-slug]]
+   (fn [db locs]
+     (d/q '[:find [?str ...]
+            :in $ [?loc ...] :where
+            [?loc     :location/city    ?city]
+            [?city    :city/name        ?city-name]
+            [?loc     :location/company ?company]
+            [?company :company/ident    ?company-ident]
+            [(ground [["gp_farm" "Farm"]
+                      ["gp_live_auc" "Auction"]])
+             [[?company-ident ?label] ...]]
+            [(str ?city-name " - " ?label) ?str]]
+          db locs))))
 
 ;; Cotton Bloom ==============================================================
 (def ^:private ach-cotton-bloom
@@ -1168,15 +1168,15 @@
 
 (defmethod achievement-info :cotton-bloom [db _cheevo]
   (counted-deliveries
-    db 10 job-pull
-    '[(match ?job)
-      [(ground ["cott_harvest" "cott_lint" "cott_seed"]) [?cargo-slug ...]]
-      [?cargo :cargo/ident      ?cargo-slug]
-      [?job   :job/cargo        ?cargo]
-      [?job   :job/source       ?src]
-      (in-state? ?src :state/tx)
-      [?job   :job/target       ?tgt]
-      (in-state? ?tgt :state/tx)]))
+   db 10 job-pull
+   '[(match ?job)
+     [(ground ["cott_harvest" "cott_lint" "cott_seed"]) [?cargo-slug ...]]
+     [?cargo :cargo/ident      ?cargo-slug]
+     [?job   :job/cargo        ?cargo]
+     [?job   :job/source       ?src]
+     (in-state? ?src :state/tx)
+     [?job   :job/target       ?tgt]
+     (in-state? ?tgt :state/tx)]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1226,16 +1226,16 @@
 
 (defmethod achievement-info :big-wheels-keep-on-turning [db _cheevo]
   (delivery-frequencies
-    db 3 loc-pull job-pull
-    '[(location ?loc)
-      [?cmp  :company/ident    "dyn_car_pln"]
-      [?loc  :location/company ?cmp]
-      [?loc  :location/city    ?city]
-      (or [?city :city/ident "lawton"]
-          [?city :city/ident "ardmore"])]
-    '[(match ?loc ?job)
-      [?job :job/source ?loc]
-      [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
+   db 3 loc-pull job-pull
+   '[(location ?loc)
+     [?cmp  :company/ident    "dyn_car_pln"]
+     [?loc  :location/company ?cmp]
+     [?loc  :location/city    ?city]
+     (or [?city :city/ident "lawton"]
+         [?city :city/ident "ardmore"])]
+   '[(match ?loc ?job)
+     [?job :job/source ?loc]
+     [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1253,21 +1253,21 @@
 
 (defmethod achievement-info :air-capital-of-the-world [db _cheevo]
   (multiple-cargoes-and-locs
-    db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "jet_wing"]]
-         [(cargo-rule ?cargo) [?cargo :cargo/ident "air_eng2"]]
-         [(loc-rule ?loc)
-          [?city :city/ident       "wichita"]
-          [?loc  :location/city    ?city]
-          [?loc  :location/company ?comp]
-          (or [?comp :company/ident "dw_air_pln"]
-              [?comp :company/ident "aport_ict"]
-              [?comp :company/ident "gss_air_svc"])]
-         [(job-rule ?job ?cargo ?loc)
-          [?job :job/cargo  ?cargo]
-          (or [?job :job/source ?loc]
-              [?job :job/target ?loc])]]
-    :str-fn (fn [_city company cargo]
-              (str company " - " cargo))))
+   db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "jet_wing"]]
+        [(cargo-rule ?cargo) [?cargo :cargo/ident "air_eng2"]]
+        [(loc-rule ?loc)
+         [?city :city/ident       "wichita"]
+         [?loc  :location/city    ?city]
+         [?loc  :location/company ?comp]
+         (or [?comp :company/ident "dw_air_pln"]
+             [?comp :company/ident "aport_ict"]
+             [?comp :company/ident "gss_air_svc"])]
+        [(job-rule ?job ?cargo ?loc)
+         [?job :job/cargo  ?cargo]
+         (or [?job :job/source ?loc]
+             [?job :job/target ?loc])]]
+   :str-fn (fn [_city company cargo]
+             (str company " - " cargo))))
 
 ;; Grain of Salt =============================================================
 ;; Broken into two parts because of the nested condition.
@@ -1346,20 +1346,20 @@
 
 (defmethod achievement-info :agriculture-expert [db _cheevo]
   (deliver-cargoes
-    db job-pull
-    '[(cargo-rule ?cargo)
-      (or [?cargo :cargo/ident "corn"]
+   db job-pull
+   '[(cargo-rule ?cargo)
+     (or [?cargo :cargo/ident "corn"]
           ;; TODO: Check if these are interchangeable.
-          [?cargo :cargo/ident "grain"]
-          [?cargo :cargo/ident "grain_b"]
-          [?cargo :cargo/ident "potatoes"]
-          [?cargo :cargo/ident "potatoes_b"]
-          [?cargo :cargo/ident "soybean_b"])]
-    '[(job-rule ?job ?cargo)
-      [?job  :job/cargo     ?cargo]
-      [?job  :job/source    ?loc]
-      [?loc  :location/city ?city]
-      [?city :city/state    :state/ne]]))
+         [?cargo :cargo/ident "grain"]
+         [?cargo :cargo/ident "grain_b"]
+         [?cargo :cargo/ident "potatoes"]
+         [?cargo :cargo/ident "potatoes_b"]
+         [?cargo :cargo/ident "soybean_b"])]
+   '[(job-rule ?job ?cargo)
+     [?job  :job/cargo     ?cargo]
+     [?job  :job/source    ?loc]
+     [?loc  :location/city ?city]
+     [?city :city/state    :state/ne]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1386,31 +1386,31 @@
 
 (defmethod achievement-info :paper-trail-logs [db _cheevo]
   (counted-deliveries
-    db 3 job-pull
-    '[(match ?job)
-      [?comp     :company/ident    "ch_wd_saw"] ; Page & Price Paper factory
-      [?tgt      :location/company ?comp]
-      [?tgt      :location/city    ?tgt-city]
-      [?tgt-city :city/state       :state/ar]
-      [?job      :job/target       ?tgt]
-      [?job      :job/cargo        [:cargo/ident "logs"]]
-      [?job      :job/source       ?src]
-      [?src      :location/city    ?src-city]
-      [?src-city :city/state       :state/ar]]))
+   db 3 job-pull
+   '[(match ?job)
+     [?comp     :company/ident    "ch_wd_saw"] ; Page & Price Paper factory
+     [?tgt      :location/company ?comp]
+     [?tgt      :location/city    ?tgt-city]
+     [?tgt-city :city/state       :state/ar]
+     [?job      :job/target       ?tgt]
+     [?job      :job/cargo        [:cargo/ident "logs"]]
+     [?job      :job/source       ?src]
+     [?src      :location/city    ?src-city]
+     [?src-city :city/state       :state/ar]]))
 
 (defmethod achievement-info :paper-trail-paper [db _cheevo]
   (counted-deliveries
-    db 3 job-pull
-    '[(match ?job)
-      [?comp     :company/ident    "pnp_wd_pln"] ; Page & Price Paper factory
-      [?tgt      :location/company ?comp]
-      [?tgt      :location/city    ?tgt-city]
-      [?tgt-city :city/state       :state/ar]
-      [?job      :job/target       ?tgt]
-      [?job      :job/cargo        [:cargo/ident "wshavings"]]
-      [?job      :job/source       ?src]
-      [?src      :location/city    ?src-city]
-      [?src-city :city/state       :state/ar]]))
+   db 3 job-pull
+   '[(match ?job)
+     [?comp     :company/ident    "pnp_wd_pln"] ; Page & Price Paper factory
+     [?tgt      :location/company ?comp]
+     [?tgt      :location/city    ?tgt-city]
+     [?tgt-city :city/state       :state/ar]
+     [?job      :job/target       ?tgt]
+     [?job      :job/cargo        [:cargo/ident "wshavings"]]
+     [?job      :job/source       ?src]
+     [?src      :location/city    ?src-city]
+     [?src-city :city/state       :state/ar]]))
 
 ;; Spa City ==================================================================
 (def ^:private ach-spa-city
@@ -1465,15 +1465,15 @@
 
 (defmethod achievement-info :what-a-blast-ingredients [db _cheevo]
   (deliver-cargoes
-    db job-pull
-    '[(cargo-rule ?cargo)
-      (or [?cargo :cargo/ident "ammonia"]
-          [?cargo :cargo/ident "sulfuric"])]
-    '[(job-rule ?job ?cargo)
-      [?job :job/cargo        ?cargo]
-      [?job :job/target       ?loc]
-      [?loc :location/city    [:city/ident "joplin"]]
-      [?loc :location/company [:company/ident "nmq_min_pln2"]]]))
+   db job-pull
+   '[(cargo-rule ?cargo)
+     (or [?cargo :cargo/ident "ammonia"]
+         [?cargo :cargo/ident "sulfuric"])]
+   '[(job-rule ?job ?cargo)
+     [?job :job/cargo        ?cargo]
+     [?job :job/target       ?loc]
+     [?loc :location/city    [:city/ident "joplin"]]
+     [?loc :location/company [:company/ident "nmq_min_pln2"]]]))
 
 (defmethod achievement-info :what-a-blast-dynamite [db _cheevo]
   (single-delivery
@@ -1483,42 +1483,70 @@
         [?job  :job/source       ?loc]
         [?job  :job/cargo        [:cargo/ident "dynamite"]]]))
 
+;; ===========================================================================
+;; |                                                                         |
+;; |                                Iowa                                     |
+;; |                                                                         |
+;; ===========================================================================
+
+;; Piggy Express =============================================================
+(def ^:private ach-piggy-express
+  {:id    :piggy-express
+   :name  "Piggy Express"
+   :group :state/ia
+   :desc  "Complete a delivery of live pigs from two different livestock farms in Iowa."})
+
+(defmethod achievement-info :piggy-express [db _cheevo]
+  (-> (visit-all
+       db :set/city
+       '[(location ?loc)
+         [(ground [["council_bluf" "evg_frm"]
+                   ["fort_dodge"   "evg_frm"]
+                   ["iowa_city"    "gp_farm"]])
+          [[?city-slug ?company-slug] ...]]
+         [?city :city/ident       ?city-slug]
+         [?loc  :location/city    ?city]
+         [?loc  :location/company ?comp]
+         [?comp :company/ident    ?company-slug]]
+       '[(match ?job ?loc)
+         [?job :job/source ?loc]
+         [?job :job/cargo [:cargo/ident "live_pigs"]]])
+      (assoc-in [:progress :sufficient] 2)))
+
 (comment
   (def conn (#'ets.jobs.ats.interface/new-database))
   (->> (d/q
-         '[:find ?cargo-name ?cargo-slug :where
-           [?cargo :cargo/ident ?cargo-slug]
-           [?cargo :cargo/name  ?cargo-name]]
-         #_'[:find ?company-name ?company-slug :where
-              [?company :company/name ?company-name]
-              [?company :company/ident ?company-slug]]
-         #_'[:find ?company-slug :where
-           [?comp :company/name     "NAMIQ"]
-           [?city :city/ident       "joplin"]
-           [?loc  :location/city    ?city]
-           [?loc  :location/company ?comp]
-           [?comp :company/ident    ?company-slug]]
-         #_'[:find ?city-name ?city-slug ?state :where
-           [?city :city/name  ?city-name]
-           [?city :city/ident ?city-slug]
-           [?city :city/state ?city-state]
-           [?city-state :db/ident ?state]]
+        #_'[:find ?cargo-name ?cargo-slug :where
+            [?cargo :cargo/ident ?cargo-slug]
+            [?cargo :cargo/name  ?cargo-name]]
+        '[:find ?company-name ?company-slug :where
+          [?company :company/name ?company-name]
+          [?company :company/ident ?company-slug]]
+        #_'[:find ?company-slug :where
+            [?comp :company/name     "NAMIQ"]
+            [?city :city/ident       "joplin"]
+            [?loc  :location/city    ?city]
+            [?loc  :location/company ?comp]
+            [?comp :company/ident    ?company-slug]]
+        #_'[:find ?city-name ?city-slug ?state :where
+            [?city :city/name  ?city-name]
+            [?city :city/ident ?city-slug]
+            [?city :city/state ?city-state]
+            [?city-state :db/ident ?state]]
 
-         #_'[:find ?city ?loc :where
-           [(ground ["columbus" "norfolk" "omaha"]) [?city-slug ...]]
-           [?city :city/ident       ?city-slug]
-           [?loc  :location/city    ?city]
-           [?loc  :location/company [:company/ident "wan_car_dlr"]]]
+        #_'[:find ?city ?loc :where
+            [(ground ["columbus" "norfolk" "omaha"]) [?city-slug ...]]
+            [?city :city/ident       ?city-slug]
+            [?loc  :location/city    ?city]
+            [?loc  :location/company [:company/ident "wan_car_dlr"]]]
 
-         #_'[:find ?loc :where
-           [?job :job/source       ?loc]
-           [?loc :location/city    [:city/ident "lincoln"]]
-           [?loc :location/company [:company/ident "out_car_pln"]]]
+        #_'[:find ?loc :where
+            [?job :job/source       ?loc]
+            [?loc :location/city    [:city/ident "lincoln"]]
+            [?loc :location/company [:company/ident "out_car_pln"]]]
 
-            @last-db)
-       sort
-       )
-  )
+        @conn)
+       sort))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1604,6 +1632,9 @@
     :cheevos [ach-subterranean
               ach-what-a-blast-ingredients
               ach-what-a-blast-dynamite]}
+   {:group   :state/ia
+    :name    "Iowa"
+    :cheevos [ach-piggy-express]}
    {:group   :group/heavy-cargo
     :name    "Heavy Cargo"
     :cheevos [ach-heavy-but-not-a-bull-in-a-china-shop
