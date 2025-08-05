@@ -15,12 +15,12 @@
 
 (defn- check [frame test]
   (g/header
-    frame
-    (fn [x]
-      (test x) ;; Throws if there's a problem.
+   frame
+   (fn [x]
+     (test x) ;; Throws if there's a problem.
       ;; We've already ready the value.
-      g/nil-frame)
-    (constantly g/nil-frame)))
+     g/nil-frame)
+   (constantly g/nil-frame)))
 
 (g/defcodec hash-method
   (-> (g/string :utf-8 :length 4)
@@ -33,16 +33,16 @@
 
 (g/defcodec header-v2
   (gc/ordered-map
-    :salt                       :uint16-le    ; 0
-    :hash-method                hash-method   ; CITY
-    :entry-count                :uint32-le    ; 0x0366     = 870
-    :entry-table-len            :uint32-le    ; 0x2541     = 9537
-    :metadata-count             :uint32-le    ; 0x112b     = 4395
-    :metadata-table-len         :uint32-le    ; 0x1c0f     = 7183
-    :entry-table-start          :uint64-le    ; 0x014e4140 = 21905728
-    :metadata-table-start       :uint64-le    ; 0x014e6690 = 21915280
-    :security-descriptor-offset :uint32-le    ; 0x80       = 128
-    :platform                   platform))
+   :salt                       :uint16-le    ; 0
+   :hash-method                hash-method   ; CITY
+   :entry-count                :uint32-le    ; 0x0366     = 870
+   :entry-table-len            :uint32-le    ; 0x2541     = 9537
+   :metadata-count             :uint32-le    ; 0x112b     = 4395
+   :metadata-table-len         :uint32-le    ; 0x1c0f     = 7183
+   :entry-table-start          :uint64-le    ; 0x014e4140 = 21905728
+   :metadata-table-start       :uint64-le    ; 0x014e6690 = 21915280
+   :security-descriptor-offset :uint32-le    ; 0x80       = 128
+   :platform                   platform))
 
 (g/defcodec preamble
   (gc/ordered-map :magic   (g/string :utf-8 :length 4)
@@ -74,10 +74,10 @@
 
 (g/defcodec entry-table-entry-v2
   (gc/ordered-map
-    :hash       :int64-le
-    :meta-index :uint32-le
-    :meta-count :uint16-le
-    :flags      :uint16-le))
+   :hash       :int64-le
+   :meta-index :uint32-le
+   :meta-count :uint16-le
+   :flags      :uint16-le))
 
 (defn- read-entry-table-v2
   [^ByteBuffer buf {:keys [entry-table-start entry-table-len]}]
@@ -88,14 +88,14 @@
 
 (g/defcodec metadata-entry-type
   (gc/enum :ubyte
-           {:image            1   
-            :sample           2   
-            :mip-proxy        3   
-            :inline-directory 4   
-            :plain            128 
-            :directory        129 
-            :mip0             130 
-            :mip1             131 
+           {:image            1
+            :sample           2
+            :mip-proxy        3
+            :inline-directory 4
+            :plain            128
+            :directory        129
+            :mip0             130
+            :mip1             131
             :mip-tail         132}))
 
 (defn- no-writing [_]
@@ -103,61 +103,78 @@
 
 (def ^:private uint24
   (gs/compile-frame
-    [:ubyte :ubyte :ubyte]
-    no-writing
-    (fn [[b0 b1 b2]]
-      (->> b0
-           (bit-or (bit-shift-left b1 8))
-           (bit-or (bit-shift-left b2 16))))))
+   [:ubyte :ubyte :ubyte]
+   no-writing
+   (fn [[b0 b1 b2]]
+     (->> b0
+          (bit-or (bit-shift-left b1 8))
+          (bit-or (bit-shift-left b2 16))))))
 
 (defmulti ^:private metadata-entry-frame identity)
 
 (defn- metadata-entry-frame-basic [type]
   (gs/compile-frame
-    (gc/ordered-map
-      :compressed-bytes uint24
-      :flags            :ubyte
-      :size             :uint32-le
-      :unknown2         :uint32-le
-      :offset-block     :uint32-le)
-    #(dissoc % :type)
-    #(assoc % :type type)))
+   (gc/ordered-map
+    :compressed-bytes uint24
+    :flags            :ubyte
+    :size             :uint32-le
+    :unknown2         :uint32-le
+    :offset-block     :uint32-le)
+   #(dissoc % :type)
+   #(assoc % :type type)))
 
 (defmethod metadata-entry-frame :default [type]
   (throw (ex-info "Unknown metadata entry type" {:type type})))
 
+(def ^:private ^:dynamic *meta-count* 0)
+
 (defmethod metadata-entry-frame :plain [type]
-  (metadata-entry-frame-basic type))
+  (let [inner (metadata-entry-frame-basic type)]
+    (if (= *meta-count* 2)
+      ;; Special case for a new bit that hasn't been fully reverse engineered.
+      ;; There's an extra field here that's ignored in this case.
+      ;; Is it a pointer to a second metadata entry or something?
+      (gs/compile-frame
+       (gc/ordered-map
+        :dummy :uint32-le
+        :inner inner)
+       #(hash-map :dummy 0 :inner %)
+       :inner)
+
+      ;; Normal case: Just pass through to the inner value.
+      inner)))
 
 (defmethod metadata-entry-frame :directory [type]
   (metadata-entry-frame-basic type))
 
 (defmethod metadata-entry-frame :image [_]
   (gc/ordered-map
-    :unknown1         :uint64-le
-    :texture/width    (gs/compile-frame :uint16-le dec inc)
-    :texture/height   (gs/compile-frame :uint16-le dec inc)
-    :flags/image      :uint32-le
-    :flags/sample     :uint32-le
-    :compressed-bytes uint24
-    :flags            :ubyte
-    :unknown3         (g/finite-block 8)
-    :offset-block     :uint32-le))
+   :unknown1         :uint64-le
+   :texture/width    (gs/compile-frame :uint16-le dec inc)
+   :texture/height   (gs/compile-frame :uint16-le dec inc)
+   :flags/image      :uint32-le
+   :flags/sample     :uint32-le
+   :compressed-bytes uint24
+   :flags            :ubyte
+   :unknown3         (g/finite-block 8)
+   :offset-block     :uint32-le))
 
 (g/defcodec metadata-entry-v2
   (g/header
-    [uint24 metadata-entry-type]
-    (fn [[index type]]
-      (gs/compile-frame (metadata-entry-frame type)
-                        no-writing
-                        #(assoc % :index index)))
-    no-writing))
+   [uint24 metadata-entry-type]
+   (fn [[index type]]
+     (gs/compile-frame (metadata-entry-frame type)
+                       no-writing
+                       #(assoc % :index index)))
+   no-writing))
 
-(defn- read-metadata-table-v2
+(defn- metadata-buffer
+  "Unpacks the metadata from the primary buffer.
+
+  Its offset and zipped size are given in the header. This returns a new
+  [[ByteBuffer]] with the unzipped contents in it."
   [^ByteBuffer buf {:keys [metadata-table-start metadata-table-len]}]
-  (let [table (unzip buf metadata-table-start metadata-table-len)]
-    (gio/decode (g/repeated metadata-entry-v2 :prefix :none)
-                table)))
+  (unzip buf metadata-table-start metadata-table-len))
 
 (def ^:private block-size 16)
 
@@ -168,27 +185,28 @@
       (bit-and 0x10)
       pos?))
 
-(defn- entry-content [scs {metadata :meta :as entry}]
-  (let [pos (* block-size (:offset-block metadata))] 
+(defn- entry-content
+  [scs {{:keys [offset-block compressed-bytes size]} :meta, :as entry}]
+  (let [pos (* block-size offset-block)]
     (if (compressed? entry)
       ;; TODO: Include the size, for efficient unzipping.
-      (unzip (:buf scs) pos (:compressed-bytes metadata))
-      (slice (:buf scs) pos (:size metadata)))))
+      (unzip (:buf scs) pos compressed-bytes)
+      (slice (:buf scs) pos size))))
 
 ;; A U32 length, that many :ubytes, then length strings of the given lengths!
 ;; We use a nested `g/header` to express that combo.
 (g/defcodec directory-codec-v2
   (g/header
-    :uint32-le
-    (fn [n-strs]
-      (g/header
-        (gs/compile-frame (vec (repeat n-strs :ubyte)))
-        (fn [lengths]
-          (gs/compile-frame
-            (vec (for [len lengths]
-                   (g/string :utf-8 :length len)))))
-        no-writing))
-    no-writing))
+   :uint32-le
+   (fn [n-strs]
+     (g/header
+      (gs/compile-frame (vec (repeat n-strs :ubyte)))
+      (fn [lengths]
+        (gs/compile-frame
+         (vec (for [len lengths]
+                (g/string :utf-8 :length len)))))
+      no-writing))
+   no-writing))
 
 (defn- directory-v2 [scs entry]
   (let [content (entry-content scs entry)
@@ -240,7 +258,7 @@
 
 (defn file-contents
   "Returns a `ByteBuffer` for the file's contents.
-  
+
   For a string, call `slurp`."
   [scs path]
   (some->> (path->entry scs path)
@@ -250,8 +268,12 @@
   (some-> (file-contents scs path)
           ->string))
 
-(defn- index-by [f seqable]
-  (into {} (map (juxt f identity)) seqable))
+(defn- parse-entry
+  [^ByteBuffer mdbuf {:keys [meta-count meta-index] :as entry}]
+  (.position mdbuf (* 4 meta-index))
+  (binding [*meta-count* meta-count]
+    (let [metadata (gio/decode metadata-entry-v2 mdbuf #_no-remainder? false)]
+      (assoc entry :meta metadata))))
 
 (defn scs-file
   "Map in and index an SCS file, by its path or `File`."
@@ -266,11 +288,8 @@
                             {:version version})))
         header   (gio/decode header-v2 (slice buf 6 43))
         entries  (read-entry-table-v2 buf header)
-        metadata (index-by :index (read-metadata-table-v2 buf header))]
-    {:buf            buf 
-     :header         header
-     :metadata-table metadata
-     :entry-table    (->> (for [{:keys [hash meta-count meta-index] :as entry} entries
-                                :let [meta_ (get metadata (+ meta-index meta-count))]]
-                            [hash (assoc entry :meta meta_)])
-                          (into {}))}))
+        mdbuf    (metadata-buffer buf header)]
+    {:buf         buf
+     :header      header
+     :entry-table (into {} (map (juxt :hash #(parse-entry mdbuf %)))
+                        entries)}))
