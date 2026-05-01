@@ -89,13 +89,13 @@
                 decrypt/decode-file
                 sii/parse-sii-raw
                 ats/ingest-sii))
-  
+
   (-> (profile-by-id :ats "42726164656E")
       latest-save
       decrypt/decode-file
       #_sii/parse-sii-raw
       #_ats/ingest-sii)
-  
+
   (d/q '[:find [(pull ?job [:*]) ...] :where
          [?job :job/type :job.type/spec_oversize]]
        (d/db conn))

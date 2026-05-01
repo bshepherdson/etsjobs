@@ -405,7 +405,7 @@
                  (d/q '[:find [(pull ?job job-pattern) ...]
                         :in $ % job-pattern [?loc ...] :where
                         (match ?loc ?job)
-                        (offer ?job)]
+                        (offer? ?job)]
                       db df-rules job-pattern locations))}))
 
 (defn- single-delivery
@@ -1221,7 +1221,7 @@
   {:id    :big-wheels-keep-on-turning
    :name  "Big Wheels Keep on Turning"
    :group :state/ok
-   :desc  "Complete 3 deliveries of Big Tires cargo from both tire factories
+   :desc  "Complete 3 deliveries of Big Tires cargo from the tire factories
           in Lawton and Ardmore."})
 
 (defmethod achievement-info :big-wheels-keep-on-turning [db _cheevo]
@@ -1248,26 +1248,61 @@
   {:id    :air-capital-of-the-world
    :name  "Air Capital of the World"
    :group :state/ks
-   :desc  "Deliver an Aircraft Wing and Jet Engine Inlets to or from every
-          aviation depot in Wichita."})
+   :desc  "Deliver an Aircraft Wing and Jet Engine Inlets to or from at least
+          two aviation depots in Wichita."})
 
 (defmethod achievement-info :air-capital-of-the-world [db _cheevo]
-  (multiple-cargoes-and-locs
-   db '[[(cargo-rule ?cargo) [?cargo :cargo/ident "jet_wing"]]
-        [(cargo-rule ?cargo) [?cargo :cargo/ident "air_eng2"]]
-        [(loc-rule ?loc)
-         [?city :city/ident       "wichita"]
-         [?loc  :location/city    ?city]
-         [?loc  :location/company ?comp]
-         (or [?comp :company/ident "dw_air_pln"]
-             [?comp :company/ident "aport_ict"]
-             [?comp :company/ident "gss_air_svc"])]
-        [(job-rule ?job ?cargo ?loc)
-         [?job :job/cargo  ?cargo]
-         (or [?job :job/source ?loc]
-             [?job :job/target ?loc])]]
-   :str-fn (fn [_city company cargo]
-             (str company " - " cargo))))
+  (let [acw-rules  (into rules
+                         '[[(cargo-rule ?cargo) [?cargo :cargo/ident "jet_wing"]]
+                           [(cargo-rule ?cargo) [?cargo :cargo/ident "air_eng2"]]
+                           [(loc-rule ?loc)
+                            [?city :city/ident       "wichita"]
+                            [?loc  :location/city    ?city]
+                            [?loc  :location/company ?comp]
+                            (or [?comp :company/ident "dw_air_pln"]
+                                [?comp :company/ident "aport_ict"]
+                                [?comp :company/ident "gss_air_svc"])]
+                           [(job-rule ?job ?cargo ?loc)
+                            [?job :job/cargo  ?cargo]
+                            (or [?job :job/source ?loc]
+                                [?job :job/target ?loc])]])
+        str-fn     (fn [_city company cargo]
+                     (str company " - " cargo))
+        required   (d/q '[:find ?cargo ?loc :in $ % :where
+                          (loc-rule ?loc)
+                          (cargo-rule ?cargo)]
+                        db acw-rules)
+        deliveries (d/q '[:find ?cargo ?loc
+                          :in $ % [[?cargo ?loc]] :where
+                          (job-rule ?job ?cargo ?loc)
+                          (delivery? ?job)]
+                        db acw-rules required)
+        ;; Raw "needed" - all cargo/dealer pairs that are not completed.
+        needed     (remove (set deliveries) required)
+        ;; However, two completed dealers is sufficient, not all three.
+        ;; So if there's only one location unfinished, empty out `needed`.
+        needed-loc (into #{} (map second) needed)
+        needed     (if (<= (count needed-loc) 1)
+                     []
+                     needed)
+        details    (fn [pairs]
+                     (d/q '[:find [?str ...]
+                            :in $ str-fn [[?cargo ?loc]] :where
+                            [?cargo :cargo/name       ?cargo-name]
+                            [?loc   :location/city    ?city]
+                            [?loc   :location/company ?comp]
+                            [?comp  :company/name     ?company-name]
+                            [?city  :city/name        ?city-name]
+                            [(str-fn ?city-name ?company-name ?cargo-name) ?str]]
+                          db str-fn pairs))]
+    {:progress {:type      :set/strings
+                :completed (details deliveries)
+                :needed    (details needed)}
+     :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                      :in $ % pattern [[?cargo ?loc]] :where
+                      (job-rule ?job ?cargo ?loc)
+                      (offer? ?job)]
+                    db acw-rules job-pull needed)}))
 
 ;; Grain of Salt =============================================================
 ;; Broken into two parts because of the nested condition.
@@ -1514,7 +1549,11 @@
       (assoc-in [:progress :sufficient] 2)))
 
 (comment
+  ;; Basic starter data for the map.
   (def conn (#'ets.jobs.ats.interface/new-database))
+  ;; My ATS profile with its real jobs.
+  (def db
+    (:db (ets.jobs.search.interface/parse-latest-save :ats "42726164656E")))
   (->> (d/q
         #_'[:find ?cargo-name ?cargo-slug :where
             [?cargo :cargo/ident ?cargo-slug]

@@ -1,4 +1,7 @@
 (ns ets.jobs.scs.codec
+  "Hat tip to TruckLib for reverse engineering this file format.
+  See especially [here](https://github.com/sk-zk/TruckLib.HashFs/blob/master/TruckLib.HashFs/HashFsV2Reader.cs)
+  in case of breaking changes."
   (:refer-clojure :exclude [file-seq slurp])
   (:require
    [clojure.java.io :as io]
