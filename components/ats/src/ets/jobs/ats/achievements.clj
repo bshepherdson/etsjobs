@@ -369,6 +369,7 @@
                              (delivery? ?job)]
                            db sd-rules)
                       0)]
+     #_(clojure.pprint/pprint sd-rules)
      {:progress {:type      :count
                  :total     total
                  :completed (min total matches)}
@@ -462,7 +463,7 @@
   {:id    :lumberjack
    :name  "Lumberjack"
    :group :state/or
-   :desc  "Deliver cargo from all timber harvest sites in Oregon."})
+   :desc  "Deliver cargo from at least 4 timber harvest sites in Oregon."})
 
 (defmethod achievement-info :lumberjack [db _cheevo]
   (deliver-from-all
@@ -1304,6 +1305,33 @@
                       (offer? ?job)]
                     db acw-rules job-pull needed)}))
 
+;; XXX: START HERE: There are a handful of edits to the achievements:
+;; - Lumberjack (OR): Change "all" to "at least 4 (distinct)"
+;; - Some Like it Salty (UT): "From each" to "From at least 6"
+;; - Major Miner (MT): Unchanged I think, but I note that my software is showing
+;;   Machinery to Coal Mine and Silane Gas complete and Talc incomplete; while
+;;   the game is showing 1/3 completed. Double-check the logic for the two I
+;;   think I've completed - they're supposed to be "complete excellent delivery"
+;;   but I'm not certain what's meant by that new phrasing.
+;; - Big Wheels Keep on Turning (OK): it's 3 from *either*; I've unlocked it.
+;;   - Like it's not 3 combined, but 3 from specifically one?
+;;   - Either way I unlocked it previously with 3 from Lawton.
+;; - Go Big or Go Home (SpecTrans): !!!! This one has changed massively.
+;;   - It's now "10 oversize routes from the base game" and I'm showing 0/10.
+;;   - That might mean coincidentally I have not done them, but I've clear CA
+;;     so that must be inaccurate.
+;;   - I'll have to program in a (real-world?) floor, artificially?
+;;   - Or maybe if I do one of the eligible routes it'll insta-complete?
+;; - Agriculture Expert (NE): I show completed but the rule is apparently one
+;;   of each crop? The game shows 3/4, so perhaps I doubled up? Check the past.
+
+;; XXX: START HERE: New ones:
+;; - Shipyard Supplies (LA): Deliver iron pipes, metal coils, and lumber to any
+;;   shipyard in Louisiana. (Not sure if all 3 to the same yard?)
+;; - Heavy Duty (IL): PERFECTLY deliver any machinery:
+;;   Springfield (IL) to Peoria, then Peoria to the NAMIQ mine in Chicago.
+;;   - Not sure what counts as machinery; check wiki.
+
 ;; Grain of Salt =============================================================
 ;; Broken into two parts because of the nested condition.
 (def ^:private ach-grain-of-salt-factory
@@ -1555,36 +1583,13 @@
   (def db
     (:db (ets.jobs.search.interface/parse-latest-save :ats "42726164656E")))
   (->> (d/q
-        #_'[:find ?cargo-name ?cargo-slug :where
-            [?cargo :cargo/ident ?cargo-slug]
-            [?cargo :cargo/name  ?cargo-name]]
-        '[:find ?company-name ?company-slug :where
-          [?company :company/name ?company-name]
-          [?company :company/ident ?company-slug]]
-        #_'[:find ?company-slug :where
-            [?comp :company/name     "NAMIQ"]
-            [?city :city/ident       "joplin"]
-            [?loc  :location/city    ?city]
-            [?loc  :location/company ?comp]
-            [?comp :company/ident    ?company-slug]]
-        #_'[:find ?city-name ?city-slug ?state :where
-            [?city :city/name  ?city-name]
-            [?city :city/ident ?city-slug]
-            [?city :city/state ?city-state]
-            [?city-state :db/ident ?state]]
-
-        #_'[:find ?city ?loc :where
-            [(ground ["columbus" "norfolk" "omaha"]) [?city-slug ...]]
-            [?city :city/ident       ?city-slug]
-            [?loc  :location/city    ?city]
-            [?loc  :location/company [:company/ident "wan_car_dlr"]]]
-
-        #_'[:find ?loc :where
-            [?job :job/source       ?loc]
-            [?loc :location/city    [:city/ident "lincoln"]]
-            [?loc :location/company [:company/ident "out_car_pln"]]]
-
-        @conn)
+        #_'[:find ?company-name ?company-slug :where
+            [?company :company/name ?company-name]
+            [?company :company/ident ?company-slug]]
+        '[:find ?id ?name :where
+          [?cargo :cargo/ident ?id]
+          [?cargo :cargo/name  ?name]]
+        db)
        sort))
 
 ;; ===========================================================================
