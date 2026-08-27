@@ -127,32 +127,33 @@
    :group   :group/heavy-cargo
    :desc    "Complete a delivery of all heavy cargoes in American Truck Simulator."})
 
-(defn- heavy-cargoes [db]
-  (set (d/q '[:find [?cargo ...] :where
-              [?cargo :cargo/heavy? true]]
-            db)))
-
-(defn- deliver-cargoes [db pull cargo-rule job-rule]
-  (let [dc-rules (conj rules cargo-rule job-rule)
-        cargoes  (d/q '[:find [?cargo ...]
-                        :in $ % :where
-                        (cargo-rule ?cargo)]
-                      db dc-rules)
-        done     (d/q '[:find [?cargo ...]
-                        :in $ % :where
-                        (cargo-rule ?cargo)
-                        (job-rule ?job ?cargo)
-                        (delivery? ?job)]
-                      db dc-rules)
-        needed   (remove (set done) cargoes)]
-    {:progress {:type      :set/cargo
-                :completed (d/pull-many db cargo-pull done)
-                :needed    (d/pull-many db cargo-pull needed)}
-     :jobs     (d/q '[:find [(pull ?job pattern) ...]
-                      :in $ % pattern [?needed ...] :where
-                      (job-rule ?job ?needed)
-                      (offer? ?job)]
-                    db dc-rules pull needed)}))
+(defn- deliver-cargoes
+  "Make a matching delivery for *each* of the `cargo-rule` cargoes."
+  ([db pull cargo-rule job-rule]
+   (deliver-cargoes db pull cargo-rule identity job-rule))
+  ([db pull cargo-rule cargo-keyfn job-rule]
+   (let [dc-rules (conj rules cargo-rule job-rule)
+         cargoes  (->> (d/q '[:find [?cargo ...]
+                              :in $ % :where
+                              (cargo-rule ?cargo)]
+                            db dc-rules)
+                       (into {} (map (juxt cargo-keyfn identity))))
+         done     (->> (d/q '[:find [?cargo ...]
+                              :in $ % :where
+                              (cargo-rule ?cargo)
+                              (job-rule ?job ?cargo)
+                              (delivery? ?job)]
+                            db dc-rules)
+                       (into {} (map (juxt cargo-keyfn identity))))
+         needed   (apply dissoc cargoes (keys done))]
+     {:progress {:type      :set/cargo
+                 :completed (d/pull-many db cargo-pull (vals done))
+                 :needed    (d/pull-many db cargo-pull (vals needed))}
+      :jobs     (d/q '[:find [(pull ?job pattern) ...]
+                       :in $ % pattern [?needed ...] :where
+                       (job-rule ?job ?needed)
+                       (offer? ?job)]
+                     db dc-rules pull (vals needed))})))
 
 (defmethod achievement-info :i-thought-this-should-be-heavy
   [db _cheevo]
@@ -385,6 +386,12 @@
 ;; ===========================================================================
 
 (defn- counted-deliveries
+  "Deliver `n` total loads matching the rules.
+
+  Any matching deliveries count; this function does not care about hitting each
+  of several locations or cargoes a certain number of times, etc. See
+  [[delivery-frequencies]] to require at least `k` deliveries to/from each of
+  several locations."
   ([db total pattern match-rule]
    (counted-deliveries db total pattern match-rule
                        '[(delivery-rule ?job)
@@ -409,6 +416,9 @@
                        db sd-rules pattern))})))
 
 (defn- delivery-frequencies
+  "Requires `each-count` deliveries for *each* location.
+
+  For `n` total deliveries from among several options, see [[counted-deliveries]]."
   [db each-count loc-pattern job-pattern location-rule match-rule]
   (let [df-rules   (conj rules match-rule location-rule)
         locations  (d/q '[:find [?loc ...] :in $ % :where
@@ -974,106 +984,6 @@
   (major-miner db :job/source "nmq_min_plnt" ["bozeman" "butte"]
                '[[?job :job/cargo [:cargo/ident "talc_pwdr"]]]))
 
-(comment
-  ;; Basic starter data for the map.
-  (def conn (#'ets.jobs.ats.interface/new-database))
-  ;; My ATS profile with its real jobs.
-  (def db
-    (:db (ets.jobs.search.interface/parse-latest-save :ats "42726164656E")))
-
-  (do
-    (def job-pattern
-      [:db/id
-       {:job/cargo [:cargo/ident :cargo/name]}
-       {:job/source [{:location/city [:city/name :city/state]}
-                     {:location/company [:company/ident :company/name]}]}
-       {:job/target [{:location/city [:city/name :city/state]}
-                     {:location/company [:company/ident :company/name]}]}])
-
-    (def human-rules
-      '[;; All job offers **and** deliveries between two cities.
-        ;; Requires both city idents to be bound!
-        [(between-cities ?from-city-ident ?to-city-ident ?job ?from ?to)
-         [?from-city :city/ident    ?from-city-ident]
-         [?from      :location/city ?from-city]
-         [?job       :job/source    ?from]
-         [?job       :job/target    ?to]
-         [?to        :location/city ?to-city]
-         [?to-city   :city/ident    ?to-city-ident]]
-
-        ;; Details of a business, given a location.
-        [(company-at ?loc ?company-ident ?company-name)
-         [?loc :location/company ?cmp]
-         [?cmp :company/ident    ?company-ident]
-         [?cmp :company/name     ?company-name]]
-
-        ;; Details of the cargo, given a job.
-        [(cargo-details ?job ?cargo-ident ?cargo-name)
-         [?job   :job/cargo   ?cargo]
-         [?cargo :cargo/ident ?cargo-ident]
-         [?cargo :cargo/name  ?cargo-name]]
-
-        ;; Predicate for completed deliveries.
-        [(delivery? ?job)
-         [?job :delivery/profit _]]
-        ;; Predicate for open job offers.
-        [(offer? ?job)
-         (not [?job :delivery/profit _])]]))
-
-  ;; All cargo idents
-  (d/q '[:find ?ident ?name :where
-         [?c :cargo/ident ?ident]
-         [?c :cargo/name  ?name]]
-       db)
-
-  ;; All locations in a city.
-  (d/q '[:find (pull ?loc [{:location/company [:company/ident :company/name]}]) :where
-         [?city :city/ident "bozeman"]
-         [?loc  :location/city ?city]]
-       db)
-
-  ;; Jobs between two cities with their cargo.
-  (d/q '[:find #_[(pull ?job job-pattern) ...]
-         ?job ?from-cmp-id ?from-cmp ?cargo ?cargo-id ?to-cmp-id ?to-cmp
-         :in $ % ?from ?to :where
-         (between-cities ?from ?to ?job ?source ?target)
-         (offer?    ?job)
-         (company-at ?source ?from-cmp-id ?from-cmp)
-         (company-at ?target ?to-cmp-id   ?to-cmp)
-         (cargo-details ?job ?cargo-id ?cargo)]
-       db human-rules "fresno" "los_angeles")
-
-  ;; All cargoes marked as "machinery".
-  (d/q '[:find ?cargo ?ident ?name :where
-         [?cargo :cargo/groups :cargo.group/machinery]
-         [?cargo :cargo/ident  ?ident]
-         [?cargo :cargo/name   ?name]]
-       db)
-
-  ;; All deliveries by city and company.
-  (d/q '[:find (pull ?job [{:job/cargo  [:cargo/ident :cargo/name]}
-                           {:job/source [{:location/city    [:city/ident :city/name]}
-                                         {:location/company [:company/ident :company/name]}]}
-                           {:job/target [{:location/city    [:city/ident :city/name]}
-                                         {:location/company [:company/ident :company/name]}]}
-                           {:job/cargo  [:cargo/ident :cargo/name {:cargo/groups [:db/ident]}]}])
-         :in $ ?city-ident :where
-         [?city :city/ident ?city-ident]
-         [?loc  :location/city ?city]
-         [?job  :job/target    ?loc]
-         [?job  :delivery/profit _] ;; Completed delivery
-         ]
-       db "bozeman")
-
-  ;; Cities by *human name*. Helps nail down ambiguous cities.
-  (d/q '[:find ?name ?state ?ident
-         :in $ ?name :where
-         [?city      :city/name  ?name]
-         [?city      :city/ident ?ident]
-         [?city      :city/state ?state-ent]
-         [?state-ent :db/ident   ?state]]
-       db "Billings"))
-
 ;; ===========================================================================
 ;; |                                                                         |
 ;; |                               Oversize                                  |
@@ -1188,13 +1098,22 @@
   {:id    :go-big-or-go-home
    :name  "Go Big or Go Home"
    :group :group/oversize
-   :desc  "Complete deliveries on all oversize routes on the current map."})
+   :desc  "Complete deliveries on at least 10 oversize routes in the base game."})
 
 (defmethod achievement-info :go-big-or-go-home [db _cheevo]
   (let [routes            (d/q '[:find [(pull ?route pattern) ...]
-                                 :in $ pattern :where
-                                 [?route :route.special/name _]]
-                               db route-pull)
+                                 :in $ % pattern :where
+                                 [?route :route.special/source-city ?from]
+                                 (base? ?from)
+                                 [?route :route.special/target-city ?to]
+                                 (base? ?to)]
+                               db
+                               '[[(base? ?city)
+                                  [?city  :city/state ?state]
+                                  (or [?state :db/ident :state/ca]
+                                      [?state :db/ident :state/nv]
+                                      [?state :db/ident :state/az])]]
+                               route-pull)
         deliveries        (set (d/q '[:find [?route ...] :where
                                       [_ :job.special/route ?route]]
                                     db))
@@ -1355,17 +1274,15 @@
           in Lawton and Ardmore."})
 
 (defmethod achievement-info :big-wheels-keep-on-turning [db _cheevo]
-  (delivery-frequencies
-   db 3 loc-pull job-pull
-   '[(location ?loc)
-     [?cmp  :company/ident    "dyn_car_pln"]
-     [?loc  :location/company ?cmp]
-     [?loc  :location/city    ?city]
-     (or [?city :city/ident "lawton"]
-         [?city :city/ident "ardmore"])]
-   '[(match ?loc ?job)
-     [?job :job/source ?loc]
-     [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
+  (counted-deliveries db 3 job-pull
+                      '[(match ?job)
+                        (or [?city :city/ident "lawton"]
+                            [?city :city/ident "ardmore"])
+                        [?loc  :location/city    ?city]
+                        [?loc  :location/company ?cmp]
+                        [?cmp  :company/ident    "dyn_car_pln"]
+                        [?job :job/source ?loc]
+                        [?job :job/cargo  [:cargo/ident "big_tyres"]]]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1434,32 +1351,11 @@
                       (offer? ?job)]
                     db acw-rules job-pull needed)}))
 
-;; XXX: START HERE: There are a handful of edits to the achievements:
-;; - [x] Lumberjack (OR): Change "all" to "at least 4 (distinct)"
-;; - [x] Some Like it Salty (UT): "From each" to "From at least 6"
-;; - [ ] Major Miner (MT): Unchanged I think, but I note that my software is showing
-;;   Machinery to Coal Mine and Silane Gas complete and Talc incomplete; while
-;;   the game is showing 1/3 completed. Double-check the logic for the two I
-;;   think I've completed - they're supposed to be "complete excellent delivery"
-;;   but I'm not certain what's meant by that new phrasing.
-;; - [ ] Big Wheels Keep on Turning (OK): it's 3 from *either*; I've unlocked it.
-;;   - Like it's not 3 combined, but 3 from specifically one?
-;;   - Either way I unlocked it previously with 3 from Lawton.
-;; - [ ] Go Big or Go Home (SpecTrans): !!!! This one has changed massively.
-;;   - It's now "10 oversize routes from the base game" and I'm showing 0/10.
-;;   - That might mean coincidentally I have not done them, but I've clear CA
-;;     so that must be inaccurate.
-;;   - I'll have to program in a (real-world?) floor, artificially?
-;;   - Or maybe if I do one of the eligible routes it'll insta-complete?
-;; - [ ] Agriculture Expert (NE): I show completed but the rule is apparently one
-;;   of each crop? The game shows 3/4, so perhaps I doubled up? Check the past.
-
-;; XXX: START HERE: New ones:
+;; XXX: START HERE: New achievements to add, once I have these expansions.
 ;; - [ ] Shipyard Supplies (LA): Deliver iron pipes, metal coils, and lumber to any
 ;;   shipyard in Louisiana. (Not sure if all 3 to the same yard?)
 ;; - [ ] Heavy Duty (IL): PERFECTLY deliver any machinery:
 ;;   Springfield (IL) to Peoria, then Peoria to the NAMIQ mine in Chicago.
-;;   - Not sure what counts as machinery; check wiki.
 
 ;; Grain of Salt =============================================================
 ;; Broken into two parts because of the nested condition.
@@ -1495,6 +1391,152 @@
      [?src  :location/company [:company/ident "nmq_min_qrys"]]
      [?src  :location/city    [:city/ident "hutchinson"]]
      [?job  :job/source       ?src]]))
+
+(comment
+  ;; Basic starter data for the map.
+  (def conn (#'ets.jobs.ats.interface/new-database))
+  ;; My ATS profile with its real jobs.
+  (def db
+    (:db (ets.jobs.search.interface/parse-latest-save :ats "42726164656E")))
+
+  (d/q '[:find (count ?route) #_(pull ?route [:* {:route.special/source-city [:*]}])
+         :in $ % :where
+         [?route :route.special/source-city ?from]
+         (base? ?from)
+         [?route :route.special/target-city ?to]
+         (base? ?to)
+         #_[?template :template.special/route ?route]]
+       db)
+
+  (d/q '[:find (pull ?cargo [:db/id :cargo/ident :cargo/name]) :where
+         (or [?cargo :cargo/ident "corn"]
+             [?cargo :cargo/ident "corn_b"]
+             ;; TODO: Check if these are interchangeable.
+             [?cargo :cargo/ident "grain"]
+             [?cargo :cargo/ident "grain_b"]
+             [?cargo :cargo/ident "potatoes"]
+             [?cargo :cargo/ident "potatoes_b"]
+             [?cargo :cargo/ident "soybean_b"])]
+       db)
+
+  (d/q '[:find (pull ?cargo [:db/id :cargo/ident :cargo/name]) :where
+         [?cargo :cargo/name "Corn"]]
+       db)
+
+  ;; Jobs matching the Agriculture Expert rules.
+  (d/q '[:find (pull ?cargo [:cargo/ident :cargo/name])
+         :in $ % :where
+         (job-rule ?job ?cargo)
+         (cargo-rule ?cargo)]
+       db '[[(job-rule ?job ?cargo)
+             [?job  :job/cargo     ?cargo]
+             [?job  :job/source    ?loc]
+             [?loc  :location/city ?city]
+             [?city :city/state    :state/ne]]
+            [(cargo-rule ?cargo)
+             (or [?cargo :cargo/ident "corn"]
+                  ;; TODO: Check if these are interchangeable.
+                 [?cargo :cargo/ident "grain"]
+                 [?cargo :cargo/ident "grain_b"]
+                 [?cargo :cargo/ident "potatoes"]
+                 [?cargo :cargo/ident "potatoes_b"]
+                 [?cargo :cargo/ident "soybean_b"])]])
+
+  (do
+    (def job-pattern
+      [:db/id
+       {:job/cargo [:cargo/ident :cargo/name]}
+       {:job/source [{:location/city [:city/name :city/state]}
+                     {:location/company [:company/ident :company/name]}]}
+       {:job/target [{:location/city [:city/name :city/state]}
+                     {:location/company [:company/ident :company/name]}]}])
+
+    (def human-rules
+      '[;; All job offers **and** deliveries between two cities.
+        ;; Requires both city idents to be bound!
+        [(between-cities ?from-city-ident ?to-city-ident ?job ?from ?to)
+         [?from-city :city/ident    ?from-city-ident]
+         [?from      :location/city ?from-city]
+         [?job       :job/source    ?from]
+         [?job       :job/target    ?to]
+         [?to        :location/city ?to-city]
+         [?to-city   :city/ident    ?to-city-ident]]
+
+        ;; Details of a business, given a location.
+        [(company-at ?loc ?company-ident ?company-name)
+         [?loc :location/company ?cmp]
+         [?cmp :company/ident    ?company-ident]
+         [?cmp :company/name     ?company-name]]
+
+        ;; Details of the cargo, given a job.
+        [(cargo-details ?job ?cargo-ident ?cargo-name)
+         [?job   :job/cargo   ?cargo]
+         [?cargo :cargo/ident ?cargo-ident]
+         [?cargo :cargo/name  ?cargo-name]]
+
+        ;; Predicate for completed deliveries.
+        [(delivery? ?job)
+         [?job :delivery/profit _]]
+        ;; Predicate for open job offers.
+        [(offer? ?job)
+         (not [?job :delivery/profit _])]]))
+
+  ;; All cargo idents
+  (d/q '[:find ?ident ?name :where
+         [?c :cargo/ident ?ident]
+         [?c :cargo/name  ?name]]
+       db)
+
+  ;; All locations in a city.
+  (d/q '[:find (pull ?loc [{:location/company [:company/ident :company/name]}]) :where
+         [?city :city/ident "topeka"]
+         [?loc  :location/city ?city]]
+       db)
+
+  ;; Jobs between two cities with their cargo.
+  (d/q '[:find #_[(pull ?job job-pattern) ...]
+         ?job ?from-cmp-id ?from-cmp ?cargo ?cargo-id ?to-cmp-id ?to-cmp
+         :in $ % ?from ?to :where
+         (between-cities ?from ?to ?job ?source ?target)
+         (offer?    ?job)
+         (company-at ?source ?from-cmp-id ?from-cmp)
+         (company-at ?target ?to-cmp-id   ?to-cmp)
+         (cargo-details ?job ?cargo-id ?cargo)]
+       db human-rules "fresno" "los_angeles")
+
+  ;; All cargoes marked as "machinery".
+  (d/q '[:find ?cargo ?ident ?name :where
+         [?cargo :cargo/groups :cargo.group/machinery]
+         [?cargo :cargo/ident  ?ident]
+         [?cargo :cargo/name   ?name]]
+       db)
+
+  ;; All deliveries by city and company.
+  (d/q '[:find (pull ?job [{:job/cargo  [:cargo/ident :cargo/name]}
+                           {:job/source [{:location/city    [:city/ident :city/name]}
+                                         {:location/company [:company/ident :company/name]}]}
+                           {:job/target [{:location/city    [:city/ident :city/name]}
+                                         {:location/company [:company/ident :company/name]}]}
+                           {:job/cargo  [:cargo/ident :cargo/name {:cargo/groups [:db/ident]}]}])
+         :in $ ?city-ident :where
+         [?city :city/ident ?city-ident]
+         [?loc  :location/city ?city]
+         [?job  :job/target    ?loc]
+         [?job  :delivery/profit _] ;; Completed delivery
+         ]
+       db "bozeman")
+
+  ;; Cities by *human name*. Helps nail down ambiguous cities.
+  (d/q '[:find ?name ?state ?ident
+         :in $ ?name :where
+         [?city      :city/name  ?name]
+         [?city      :city/ident ?ident]
+         [?city      :city/state ?state-ent]
+         [?state-ent :db/ident   ?state]]
+       db "Topeka")
+
+  ;; "hays" "junction_cty" "salina_ks" "topeka"
+  )
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1541,12 +1583,14 @@
    db job-pull
    '[(cargo-rule ?cargo)
      (or [?cargo :cargo/ident "corn"]
-          ;; TODO: Check if these are interchangeable.
+         [?cargo :cargo/ident "corn_b"]
          [?cargo :cargo/ident "grain"]
          [?cargo :cargo/ident "grain_b"]
          [?cargo :cargo/ident "potatoes"]
          [?cargo :cargo/ident "potatoes_b"]
          [?cargo :cargo/ident "soybean_b"])]
+   (fn [cargo-eid]
+     (:cargo/name (d/entity db cargo-eid)))
    '[(job-rule ?job ?cargo)
      [?job  :job/cargo     ?cargo]
      [?job  :job/source    ?loc]
