@@ -51,7 +51,7 @@
   ;; There are non-jobs in the list for reasons I don't grok.
   ;; These have urgency -1, which is used to filter them out.
   #_(prn "expiration-time" expiration-time (type expiration-time))
-  (when (pos? urgency)
+  (when-not (neg? urgency)
     [{:sii/block-id          (long block-id)
       :job/cargo             [:cargo/ident cargo]
       :job/target            (location-slug->ref target)
@@ -78,31 +78,31 @@
     ;; These are all strings as they come out of the file, so they need number parsing.
     (when (not= job-type "freerm")
       [(merge
-         {:job/type                    (keyword "job.type" job-type)
-          :job/cargo                   (cargo-slug->ref cargo)
-          :job/distance-km             (parse-long distance-km)
+        {:job/type                    (keyword "job.type" job-type)
+         :job/cargo                   (cargo-slug->ref cargo)
+         :job/distance-km             (parse-long distance-km)
           ;; Deliveries urgency is 0, 1 or 2. Bump it to 1-3.
-          :job/urgency                 (inc (parse-long urgency))
-          :delivery/start-time         (parse-long started-at)
-          :delivery/end-time           (parse-long completed-at)
-          :delivery/remaining-time     (parse-long time-to-expiry)
-          :delivery/xp                 (parse-long xp)
-          :delivery/profit             (parse-long profit)
-          :delivery/fines              (parse-long fines)
-          :delivery/damage-ratio       (parse-double damage-ratio)
-          :delivery/company-truck?     (= company-truck? "1")
-          :delivery/parking-difficulty (if (= auto-parked? "1")
-                                         0
-                                         (parse-long parking-option))
-          :delivery/cargo-mass-kg      (parse-double cargo-mass)
-          :sii/block-id                (:sii/block-id block)}
-         (when (not= job-type "spec_oversize")
-           {:job/source (location-slug->ref source)
-            :job/target (location-slug->ref target)})
+         :job/urgency                 (inc (parse-long urgency))
+         :delivery/start-time         (parse-long started-at)
+         :delivery/end-time           (parse-long completed-at)
+         :delivery/remaining-time     (parse-long time-to-expiry)
+         :delivery/xp                 (parse-long xp)
+         :delivery/profit             (parse-long profit)
+         :delivery/fines              (parse-long fines)
+         :delivery/damage-ratio       (parse-double damage-ratio)
+         :delivery/company-truck?     (= company-truck? "1")
+         :delivery/parking-difficulty (if (= auto-parked? "1")
+                                        0
+                                        (parse-long parking-option))
+         :delivery/cargo-mass-kg      (parse-double cargo-mass)
+         :sii/block-id                (:sii/block-id block)}
+        (when (not= job-type "spec_oversize")
+          {:job/source (location-slug->ref source)
+           :job/target (location-slug->ref target)})
 
          ;; And a bonus field for special transport routes.
-         (when (not-empty route-name)
-           {:job.special/route {:route.special/name route-name}}))])))
+        (when (not-empty route-name)
+          {:job.special/route {:route.special/name route-name}}))])))
 
 (defmethod ingest-block "oversize_offer"
   [{:keys [expiration]
@@ -120,7 +120,7 @@
 
 (defn- ingest-cleanup
   "Some companies have jobs in their listings which are not real.
-  
+
   This function runs a new transaction that deletes any extra junk."
   [conn]
   (d/transact conn {:tx-data (for [job-eid (jobs-without-target (d/db conn))]

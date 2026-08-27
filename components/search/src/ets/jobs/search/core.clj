@@ -108,20 +108,17 @@
 
   (->> prof
        (map (comp :name :sii/struct))
-       set
-       )
+       set)
   (->> prof
        (filter (comp #{"oversize_offer"} :name :sii/struct))
        (map :offer-data)
-       (take 5)
-       )
+       (take 5))
 
   (->> prof
        (filter (comp #{["spec_offer" "ovesize_10"]} :sii/block-id))
-       first
-       )
+       first)
 
-  ;; 51 total currently.
+;; 51 total currently.
   ;; The total set is:
   ;; - 13 from base
   ;; - 3 from Arizona (16)
@@ -253,7 +250,7 @@
   ;; It's Something - Find a sign that says "nothing" - Out of scope
   ;; Gem State - Discover every city in Utah - Out of scope
   ;; 45th Parallel - Visit 45th Parallel in Idaho - Out of scope
-  ;; The Centennial State - Discover every city in Colorado - Out of scope 
+  ;; The Centennial State - Discover every city in Colorado - Out of scope
   ;; Million Dollar Highway - Drive the famous bit of U.S. 550 in Colorado - Out of scope
   ;; Cruising High Below - Drive through the Eisenhower-Johnson Memorial Tunnel in both directions - Out of scope
   ;; Four Corners - Visit the Four Corners monument (AZ, CO, NM, UT) - Out of scope

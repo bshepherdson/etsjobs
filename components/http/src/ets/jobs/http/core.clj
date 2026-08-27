@@ -86,7 +86,7 @@
    #_[:span.flag "flag"]])
 
 (defn- company-name [{:company/keys [name ident]}]
- (or name ident))
+  (or name ident))
 
 (defn job-block [ctx jobs]
   (html
@@ -138,11 +138,11 @@
   (sort-by #(- time (:offer/expiration-time %)) jobs))
 
 (defn- sort-by-city [_ctx jobs]
- (sort-by (comp (juxt (comp :db/ident :city/state) :city/name)
-             :route.special/source-city
-             :template.special/route
-             :offer.special/template)
-   jobs))
+  (sort-by (comp (juxt (comp :db/ident :city/state) :city/name)
+                 :route.special/source-city
+                 :template.special/route
+                 :offer.special/template)
+           jobs))
 
 (defmulti ^:private progress-block
   (fn [_ctx {:keys [special type]}]
@@ -242,8 +242,8 @@
   ; Sorting by descending time-to-live.
   (let [{:keys [jobs progress]} (achivement-info ctx id)
         sorter                  (case cheevo-group
-                                 :group/oversize sort-by-city
-                                 sort-by-expiration)
+                                  :group/oversize sort-by-city
+                                  sort-by-expiration)
         jobs                    (sorter ctx jobs)
         done?                   (completed? progress)]
     (if done?

@@ -75,12 +75,21 @@
     "tractor_c"
     "transformer"})
 
-(defn- tx-cargo [{:keys [adr_class name]
-                  [_cargo slug] :sii/block-id}]
+(defonce cargo-blocks (atom {}))
+
+(defn- tx-cargo [{:keys [adr_class group name]
+                  [_cargo slug] :sii/block-id
+                  :as cargo}]
+  #_(swap! cargo-blocks assoc slug cargo)
   (merge {:cargo/ident slug
           :cargo/name  (i18n name)}
          (when-let [adr (not-empty (into #{} (map adr-classes) adr_class))]
            {:cargo/adr adr})
+         (when-let [groups (seq group)]
+           ;; Note that the groups are stored as `:group [["foo"] ["bar"]]`.
+           {:cargo/groups (mapv (fn [[group-name]]
+                                  (keyword "cargo.group" group-name))
+                                groups)})
          (when (heavy-cargoes slug)
            {:cargo/heavy? true})))
 
@@ -110,7 +119,9 @@
 (def ^:private tx-game-files
   (delay
     (let [m (reduce (partial merge-with concat) {} (read-game-files))]
-      (into [] cat [(:cities m) (:companies m) (:cargo m)]))))
+
+      (into [] cat [(:cities m) (:companies m)
+                    (cargo-groups (:cargo m)) (:cargo m)]))))
 
 (def ^:private tx-missing-companies
   [;; Lots of Wallbert locations were removed in 1.53.
