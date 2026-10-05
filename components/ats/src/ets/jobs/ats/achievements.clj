@@ -1208,14 +1208,16 @@
           db locs))))
 
 ;; Cotton Bloom ==============================================================
-(def ^:private ach-cotton-bloom
-  {:id    :cotton-bloom
-   :name  "Cotton Bloom"
+;; Two parts, since this achievement requires 10 deliveries total, *and* three
+;; unique cargoes.
+(def ^:private ach-cotton-bloom-totals
+  {:id    :cotton-bloom-totals
+   :name  "Cotton Bloom - Totals"
    :group :state/tx
    :desc  "Complete 10 deliveries of at least one Cotton Lint, Cotton Seed and
           Cotton Gin Harvester within Texas."})
 
-(defmethod achievement-info :cotton-bloom [db _cheevo]
+(defmethod achievement-info :cotton-bloom-totals [db _cheevo]
   (counted-deliveries
    db 10 job-pull
    '[(match ?job)
@@ -1226,6 +1228,27 @@
      (in-state? ?src :state/tx)
      [?job   :job/target       ?tgt]
      (in-state? ?tgt :state/tx)]))
+
+(def ^:private ach-cotton-bloom-cargoes
+  {:id    :cotton-bloom-cargoes
+   :name  "Cotton Bloom - Cargoes"
+   :group :state/tx
+   :desc  "Complete 10 deliveries of at least one Cotton Lint, Cotton Seed and
+          Cotton Gin Harvester within Texas."})
+
+(defmethod achievement-info :cotton-bloom-cargoes [db _cheevo]
+  (deliver-cargoes
+    db job-pull
+    '[(cargo-rule ?cargo)
+     (or [?cargo :cargo/ident "cott_harvest"]
+         [?cargo :cargo/ident "cott_lint"]
+         [?cargo :cargo/ident "cott_seed"])]
+    '[(job-rule ?job ?cargo)
+      [?job   :job/cargo        ?cargo]
+      [?job   :job/source       ?src]
+      (in-state? ?src :state/tx)
+      [?job   :job/target       ?tgt]
+      (in-state? ?tgt :state/tx)]))
 
 ;; ===========================================================================
 ;; |                                                                         |
@@ -1812,7 +1835,8 @@
     :name    "Texas"
     :cheevos [ach-shoreside-delivery
               ach-farm-away
-              ach-cotton-bloom]}
+              ach-cotton-bloom-cargoes
+              ach-cotton-bloom-totals]}
    {:group   :state/ok
     :name    "Oklahoma"
     :cheevos [ach-school-bus-capital-hoods
