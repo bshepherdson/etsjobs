@@ -1399,6 +1399,11 @@
   (def db
     (:db (ets.jobs.search.interface/parse-latest-save :ats "42726164656E")))
 
+  (d/q '[:find (pull ?job [:*]) :where
+         [?cargo :cargo/ident "cars_big"]
+         [?job   :job/cargo   ?cargo]]
+       db)
+
   (d/q '[:find (count ?route) #_(pull ?route [:* {:route.special/source-city [:*]}])
          :in $ % :where
          [?route :route.special/source-city ?from]

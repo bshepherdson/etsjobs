@@ -63,12 +63,17 @@
   (.position buf pos)
   buf)
 
+(def ^:private unzip-max-compression-ratio
+  "To simplify the below [[unzip]] routines, we assume a fixed best compression
+  ratio and pre-allocate a buffer larger enough for it."
+  24)
+
 (defn- unzip
   ([^ByteBuffer buf]
    (let [inflater (doto (Inflater. false)
                     (.setInput buf))
          zip-len  (.remaining buf)
-         out      (ByteBuffer/allocate (* 16 zip-len))]
+         out      (ByteBuffer/allocate (* unzip-max-compression-ratio zip-len))]
      (.inflate inflater out)
      (.flip out)
      out))

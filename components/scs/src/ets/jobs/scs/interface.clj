@@ -57,16 +57,20 @@
   [scs path]
   (let [dir (files/dirname path)]
     (when-let [content (codec/slurp scs path)]
-      (sii/parse-with-includes content
-                               (fn [filename]
-                                 (let [inc-path (if (= \/ (first filename))
-                                                  filename
-                                                  (str dir "/" filename))]
-                                   (or (codec/slurp scs inc-path)
-                                       (throw (ex-info "Failed to read include file"
-                                                       {:requested-file filename
-                                                        :include-path   inc-path
-                                                        :pwd            dir})))))))))
+      (try (sii/parse-with-includes content
+                                    (fn [filename]
+                                      (let [inc-path (if (= \/ (first filename))
+                                                       filename
+                                                       (str dir "/" filename))]
+                                        (or (codec/slurp scs inc-path)
+                                            (throw (ex-info "Failed to read include file"
+                                                            {:requested-file filename
+                                                             :include-path   inc-path
+                                                             :pwd            dir}))))))
+           (catch Exception e
+             (throw (ex-info "Failed to parse text .sii file"
+                             {:path path}
+                             e)))))))
 
 (defn- locale-file [scs filename]
   (if-let [[{:keys [key val]}] (scs->text-sii scs filename)]

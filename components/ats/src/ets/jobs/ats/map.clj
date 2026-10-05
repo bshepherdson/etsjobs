@@ -116,6 +116,30 @@
        (cons core-files)
        (mapv read-game-file)))
 
+(comment
+  (def gf (read-game-files))
+  (->> (mapcat :cargo gf)
+       (map :cargo/ident)
+       set)
+  )
+
+(defn- cargo-groups [cargo-txs]
+  (->> cargo-txs
+       (mapcat :cargo/groups)
+       set
+       (mapv (fn [group]
+               {:db/ident group}))))
+
+;; TODO: This could probably be future-proofed and made more flexible for other
+;; users if it were automated like the cargo groups.
+;; That logic would actually have to go in the job loaders, not here.
+(def ^:private tx-missing-cargo
+  [;; This has been replaced with cars_big2 in the current data but completed
+   ;; jobs still appear with "cars_big" in the logs, so this needs to exist.
+   {:cargo/ident  "cars_big"
+    :cargo/name   "XXX cars_big XXX"
+    :cargo/groups [:cargo.group/machinery]}])
+
 (def ^:private tx-game-files
   (delay
     (let [m (reduce (partial merge-with concat) {} (read-game-files))]
@@ -137,7 +161,10 @@
 
 (def initial-data
   "Initial data for the ATS map, companies, etc."
-  (future (into [] cat [tx-states tx-missing-companies @tx-game-files])))
+  (future (into [] cat [tx-states
+                        tx-missing-companies
+                        @tx-game-files
+                        tx-missing-cargo])))
 
 (def ^:private city-renames
   {"san_rafael" "oakland"

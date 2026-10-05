@@ -20,4 +20,8 @@
   (core/jobs-query :ets2 "426973686F7032" [:regions/all])
   (time-info :ets2 "426973686F7032")
   (job-offers :ets2 "426973686F7032")
+
+  (def s (parse-latest-save :ats "42726164656E"))
+  (keys s)
+  *e
   )
