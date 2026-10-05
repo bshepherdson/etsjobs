@@ -126,11 +126,23 @@
   (d/transact conn {:tx-data (for [job-eid (jobs-without-target (d/db conn))]
                                [:db/retractEntity job-eid])}))
 
-(defn- ingestion-tx [blocks]
-  (into [] (mapcat ingest-block) blocks))
+(defn- ingestion-tx [conn blocks]
+  (let [tx            (into [] (mapcat ingest-block) blocks)
+        needed-cargos (into #{} (comp (keep :job/cargo)
+                                      (map second))
+                            tx)
+        known-cargos  (set (d/q '[:find [?ident ...] :where
+                                  [_ :cargo/ident ?ident]]
+                                (d/db conn)))
+        missing       (remove known-cargos needed-cargos)]
+    (println (str "Backfilling missing cargos: " (vec missing)))
+    (into [] cat [(for [cargo missing]
+                    {:cargo/ident cargo
+                     :cargo/name  (str "UNKNOWN CARGO: " cargo)})
+                  tx])))
 
 (defn ingest-sii [conn blocks]
   (doto conn
-    (d/transact {:tx-data (ingestion-tx blocks)})
+    (d/transact {:tx-data (ingestion-tx conn blocks)})
     (ingest-cleanup)
     #_conn))
